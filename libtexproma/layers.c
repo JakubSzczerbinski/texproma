@@ -4,6 +4,21 @@ void tpm_set(tpm_mono_buf dst, int value) {
   memset(dst, value, TP_WIDTH * TP_HEIGHT);
 }
 
+void tpm_explode(tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b,
+                 tpm_color_buf c) {
+  for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
+    r[i] = c[i].r;
+    g[i] = c[i].g;
+    b[i] = c[i].b;
+  }
+}
+
+void tpm_implode(tpm_color_buf c, 
+                 tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b) {
+  for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++)
+    c[i] = (color_t){r[i], g[i], b[i]};
+}
+
 void tpm_add(tpm_mono_buf dst, tpm_mono_buf src1, tpm_mono_buf src2) {
   for (int y = 0; y < TP_HEIGHT; y++)
     for (int x = 0; x < TP_WIDTH; x++)

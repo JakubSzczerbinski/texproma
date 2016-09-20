@@ -309,6 +309,8 @@ void tpm_light(tpm_mono_buf dst, uint8_t type, float radius);
 void tpm_perlin_plasma(tpm_mono_buf dst, uint8_t step, uint32_t seed);
 
 static cfunc_ctor_t cfuncs[] = {
+  { "explode", &tpm_explode, "MMMc" },
+  { "implode", &tpm_implode, "Cmmm" },
   { "plasma", &tpm_plasma, "Miiff" },
   { "light", &tpm_light, "Mif" },
   { "perlin-plasma", &tpm_perlin_plasma, "Mii" },
@@ -332,7 +334,7 @@ static char *initprog[] = {
 };
 
 tpmi_t *tpmi_new() {
-  tpmi_t *interp = malloc(sizeof(tpmi_t));
+  tpmi_t *interp = calloc(1, sizeof(tpmi_t));
   TAILQ_INIT(&interp->stack);
   interp->words = dict_new();
 

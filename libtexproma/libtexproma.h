@@ -13,6 +13,11 @@ typedef struct {
 typedef uint8_t *tpm_mono_buf;
 typedef color_t *tpm_color_buf;
 
+void tpm_explode(tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b,
+                 tpm_color_buf c);
+void tpm_implode(tpm_color_buf c, 
+                 tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b);
+
 /* generate ops */
 void tpm_plasma(tpm_mono_buf dst, uint8_t xsines, uint8_t ysines,
                 float xphase, float yphase);
