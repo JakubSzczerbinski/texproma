@@ -1,0 +1,11 @@
+#!python
+
+import os
+
+env = Environment(ENV = os.environ)
+env.Append(CCFLAGS = '-g -O2 -Wall')
+env.Append(LINKFLAGS = '-g')
+
+sources = ['common.c', 'distort.c', 'generate.c', 'layers.c']
+# 'colors.c', 'filter.c'
+env.StaticLibrary(target='texproma', source=sources)

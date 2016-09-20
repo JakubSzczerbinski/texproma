@@ -1,10 +1,11 @@
 *.o
 *.a
 
-.exrc
 *.swo
 *.swp
 *~
+
+.*
 
 cscope.out
 tags
