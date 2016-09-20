@@ -118,6 +118,61 @@ static tpmi_status_t do_swap(tpmi_t *interp) {
   return TPMI_OK;
 }
 
+static tpmi_status_t do_roll(tpmi_t *interp) {
+  cell_t *top = STACK_TOP(&interp->stack);
+
+  if (top->type != CT_INT) {
+    ERROR(interp, "'roll' requires integer at the top of stack");
+    return TPMI_ERROR;
+  }
+  
+  size_t n = top->i;
+  cell_t *arg = STACK_PREV(top);
+
+  while (arg && (n-- > 0))
+    arg = STACK_PREV(arg);
+
+  if (arg == NULL) {
+    ERROR(interp,
+          "'roll' expected the stack to have %d elements", top->i + 1);
+    return TPMI_ERROR;
+  }
+
+  STACK_REMOVE(&interp->stack, top);
+  STACK_REMOVE(&interp->stack, arg);
+  STACK_PUSH(&interp->stack, arg);
+  cell_delete(top);
+
+  return TPMI_OK;
+}
+
+static tpmi_status_t do_pick(tpmi_t *interp) {
+  cell_t *top = STACK_TOP(&interp->stack);
+
+  if (top->type != CT_INT) {
+    ERROR(interp, "'pick' requires integer at the top of stack");
+    return TPMI_ERROR;
+  }
+  
+  size_t n = top->i;
+  cell_t *arg = STACK_PREV(top);
+
+  while (arg && (n-- > 0))
+    arg = STACK_PREV(arg);
+
+  if (arg == NULL) {
+    ERROR(interp,
+          "'pick' expected the stack to have %d elements", top->i + 1);
+    return TPMI_ERROR;
+  }
+
+  STACK_REMOVE(&interp->stack, top);
+  STACK_PUSH(&interp->stack, cell_dup(arg));
+  cell_delete(top);
+
+  return TPMI_OK;
+}
+
 static tpmi_status_t do_over(tpmi_t *interp) {
   STACK_PUSH(&interp->stack, cell_dup(STACK_PREV(STACK_TOP(&interp->stack))));
   return TPMI_OK;
@@ -290,6 +345,8 @@ static builtin_ctor_t builtins[] = {
   { "dup", &do_dup, 1 },
   { "swap", &do_swap, 2 },
   { "over", &do_over, 2 },
+  { "roll", &do_roll, 1 },
+  { "pick", &do_pick, 1 },
   { ".p", &do_print, 1 },
   { ".d", &do_display, 1 },
   { ".s", &do_print_stack, 0 },
