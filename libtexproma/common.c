@@ -9,22 +9,22 @@ static uint8_t tpm_clampi(int i) {
 }
 
 int tpm_get_pixel(tpm_mono_buf buf, int x, int y) {
-  assert(x >= 0 && x < TP_WIDTH);
-  assert(y >= 0 && y < TP_HEIGHT);
+  x %= TP_WIDTH;
+  y %= TP_HEIGHT;
 
   return buf[y * TP_WIDTH + x];
 }
 
 void tpm_put_pixel(tpm_mono_buf buf, int x, int y, int c) {
-  assert(x >= 0 && x < TP_WIDTH);
-  assert(y >= 0 && y < TP_HEIGHT);
+  x %= TP_WIDTH;
+  y %= TP_HEIGHT;
 
   buf[y * TP_WIDTH + x] = tpm_clampi(c);
 }
 
 colori tpm_get_color_pixel(tpm_color_buf buf, int x, int y) {
-  assert(x >= 0 && x < TP_WIDTH);
-  assert(y >= 0 && y < TP_HEIGHT);
+  x %= TP_WIDTH;
+  y %= TP_HEIGHT;
 
   unsigned i = y * TP_WIDTH + x;
 
@@ -32,8 +32,8 @@ colori tpm_get_color_pixel(tpm_color_buf buf, int x, int y) {
 }
 
 void tpm_put_color_pixel(tpm_color_buf buf, int x, int y, colori c) {
-  assert(x >= 0 && x < TP_WIDTH);
-  assert(y >= 0 && y < TP_HEIGHT);
+  x %= TP_WIDTH;
+  y %= TP_HEIGHT;
 
   unsigned i = y * TP_WIDTH + x;
 

@@ -1,12 +1,12 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <histedit.h>
-#include <signal.h>
-#include <SDL.h>
 
-#include "interp.h"
 #include "ansi.h"
+#include "interp.h"
+#include "gui.h"
 
 static bool need_more = false;
 
@@ -40,23 +40,12 @@ int main(int argc, char *argv[]) {
   /* This sets up the call back functions for history functionality */
   el_set(el, EL_HIST, history, hist);
 
-  /* Initialize the SDL library */
-  struct sigaction action;
-  sigaction(SIGINT, NULL, &action);
-
-  if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_NOPARACHUTE) < 0) {
-    fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
-    exit(EXIT_FAILURE);
-  }
-
-  sigaction(SIGINT, &action, NULL);
-
-  /* Clean up on exit */
-  atexit(SDL_Quit);
-
-  puts("TEXture PROcessing MAchine");
+  puts(MAGENTA BOLD "TEX" WHITE "ture " MAGENTA "PRO" WHITE "cessing "
+       MAGENTA "MA" WHITE "chine" RESET);
   puts("Copyright © 1999-2016 Krystian Bacławski");
   puts("Press CTRL+C to exit");
+
+  gui_init();
 
   interp = tpmi_new(); 
 
@@ -78,6 +67,9 @@ int main(int argc, char *argv[]) {
 
       /* We have to explicitly add commands to the history */
       history(hist, &ev, need_more ? H_APPEND : H_ENTER, line);
+
+      if (status == TPMI_OK)
+        gui_update(interp);
     }
   }
 

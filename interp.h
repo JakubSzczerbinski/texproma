@@ -1,6 +1,8 @@
 #ifndef __INTERP_H__
 #define __INTERP_H__
 
+#include <stdbool.h>
+
 #include "cell.h"
 #include "dict.h"
 

@@ -16,8 +16,9 @@ cell.o: cell.c cell.h tailq.h
 dict.o: dict.c dict.h cell.h tailq.h
 interp.o: interp.c interp.h cell.h tailq.h dict.h
 main.o: main.c interp.h cell.h tailq.h dict.h
+gui.o: gui.c gui.h cell.h tailq.h dict.h
 
-texproma: main.o interp.o dict.o cell.o
+texproma: main.o interp.o dict.o cell.o gui.o
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:

@@ -6,7 +6,6 @@
 #include <ctype.h>
 
 #include <avcall.h>
-#include <SDL.h>
 
 #include "interp.h"
 #include "ansi.h"
@@ -16,15 +15,6 @@
 
 #define STACK_TOP(stack)                                                \
   TAILQ_LAST((stack), cell_list)
-
-#define STACK_PREV(cell)                                                \
-  TAILQ_PREV(cell, cell_list, list)
-
-#define STACK_NEXT(cell)                                                \
-  TAILQ_NEXT(cell, list)
-
-#define STACK_REMOVE(stack, cell)                                       \
-  TAILQ_REMOVE((stack), (cell), list);
 
 #define STACK_POP(stack) ({                                             \
     cell_t *tmp = TAILQ_LAST((stack), cell_list);                       \
@@ -48,55 +38,6 @@ static tpmi_status_t do_print(tpmi_t *interp) {
   cell_t *c = STACK_TOP(&interp->stack);
   print_cell(c);
   putchar('\n');
-  return TPMI_OK;
-}
-
-static tpmi_status_t do_display(tpmi_t *interp) {
-  cell_t *c = STACK_TOP(&interp->stack);
-
-  if (c->type != CT_MONO && c->type != CT_COLOR) {
-    ERROR(interp, "not at image at the top of stack");
-    return TPMI_ERROR;
-  }
-
-  SDL_Window *window = SDL_CreateWindow("TexProMa: top of stack display",
-                                        SDL_WINDOWPOS_UNDEFINED,
-                                        SDL_WINDOWPOS_UNDEFINED,
-                                        TP_WIDTH, TP_HEIGHT, 0);
-  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1,
-                                              SDL_RENDERER_ACCELERATED);
-  SDL_Texture *texture = SDL_CreateTexture(renderer, 
-                                           SDL_PIXELFORMAT_RGB24,
-                                           SDL_TEXTUREACCESS_STREAMING,
-                                           TP_WIDTH, TP_HEIGHT);
-  assert(texture != NULL);
-
-  int pitch = TP_WIDTH * sizeof(color_t);
-
-  if (c->type == CT_MONO) {
-    color_t *pixels = malloc(pitch * TP_HEIGHT);
-    uint8_t *mono = c->mono;
-    for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
-      uint8_t p = mono[i];
-      pixels[i] = (color_t){.r = p, .g = p, .b = p};
-    }
-    assert(SDL_UpdateTexture(texture, NULL, pixels, pitch) == 0);
-    free(pixels);
-  } else {
-    assert(SDL_UpdateTexture(texture, NULL, c->color, pitch) == 0);
-  }
-  SDL_RenderClear(renderer);
-  SDL_RenderCopy(renderer, texture, NULL, NULL);
-  SDL_RenderPresent(renderer);
-
-  SDL_Event event;
-  while (SDL_WaitEvent(&event))
-    if (event.type == SDL_QUIT || event.type == SDL_KEYUP)
-      break;
-
-  SDL_DestroyRenderer(renderer);
-  SDL_DestroyWindow(window);
-
   return TPMI_OK;
 }
 
@@ -127,10 +68,10 @@ static tpmi_status_t do_roll(tpmi_t *interp) {
   }
   
   size_t n = top->i;
-  cell_t *arg = STACK_PREV(top);
+  cell_t *arg = CELL_PREV(top);
 
   while (arg && (n-- > 0))
-    arg = STACK_PREV(arg);
+    arg = CELL_PREV(arg);
 
   if (arg == NULL) {
     ERROR(interp,
@@ -138,8 +79,8 @@ static tpmi_status_t do_roll(tpmi_t *interp) {
     return TPMI_ERROR;
   }
 
-  STACK_REMOVE(&interp->stack, top);
-  STACK_REMOVE(&interp->stack, arg);
+  CELL_REMOVE(&interp->stack, top);
+  CELL_REMOVE(&interp->stack, arg);
   STACK_PUSH(&interp->stack, arg);
   cell_delete(top);
 
@@ -155,10 +96,10 @@ static tpmi_status_t do_pick(tpmi_t *interp) {
   }
   
   size_t n = top->i;
-  cell_t *arg = STACK_PREV(top);
+  cell_t *arg = CELL_PREV(top);
 
   while (arg && (n-- > 0))
-    arg = STACK_PREV(arg);
+    arg = CELL_PREV(arg);
 
   if (arg == NULL) {
     ERROR(interp,
@@ -166,7 +107,7 @@ static tpmi_status_t do_pick(tpmi_t *interp) {
     return TPMI_ERROR;
   }
 
-  STACK_REMOVE(&interp->stack, top);
+  CELL_REMOVE(&interp->stack, top);
   STACK_PUSH(&interp->stack, cell_dup(arg));
   cell_delete(top);
 
@@ -174,7 +115,7 @@ static tpmi_status_t do_pick(tpmi_t *interp) {
 }
 
 static tpmi_status_t do_over(tpmi_t *interp) {
-  STACK_PUSH(&interp->stack, cell_dup(STACK_PREV(STACK_TOP(&interp->stack))));
+  STACK_PUSH(&interp->stack, cell_dup(CELL_PREV(STACK_TOP(&interp->stack))));
   return TPMI_OK;
 }
 
@@ -262,7 +203,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
 
     for (int i = n - 1; i >= 0; i--) {
       if (islower(sig[i])) {
-        arg = (arg == NULL) ? STACK_TOP(&interp->stack) : STACK_PREV(arg);
+        arg = (arg == NULL) ? STACK_TOP(&interp->stack) : CELL_PREV(arg);
 
         if (arg->type != sig[i]) {
           ERROR(interp, "'%s' argument %u type mismatch - expected %c, got %c",
@@ -292,7 +233,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
         else
           abort();
 
-        carg = STACK_NEXT(carg);
+        carg = CELL_NEXT(carg);
       } else {
         /* pass output arguments, but firstly push them on top of stack */
         char type = tolower(sig[i]);
@@ -322,8 +263,8 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
     /* remove input arguments from stack */
     for (size_t i = 0; i < args; i++) {
       cell_t *c = arg;
-      arg = STACK_NEXT(arg);
-      STACK_REMOVE(&interp->stack, c);
+      arg = CELL_NEXT(arg);
+      CELL_REMOVE(&interp->stack, c);
       cell_delete(c);
     }
 
@@ -348,7 +289,6 @@ static builtin_ctor_t builtins[] = {
   { "roll", &do_roll, 1 },
   { "pick", &do_pick, 1 },
   { ".p", &do_print, 1 },
-  { ".d", &do_display, 1 },
   { ".s", &do_print_stack, 0 },
   { ".w", &do_print_dict, 0 },
   { "mono", &do_mono, 0 },
