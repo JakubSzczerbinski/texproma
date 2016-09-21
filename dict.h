@@ -1,6 +1,8 @@
 #ifndef __DICT_H__
 #define __DICT_H__
 
+#include <stdbool.h>
+
 #include "cell.h"
 
 typedef enum { WT_NULL, WT_VAR, WT_DEF, WT_BUILTIN, WT_CFUNC } word_type_t;
@@ -8,6 +10,7 @@ typedef enum { WT_NULL, WT_VAR, WT_DEF, WT_BUILTIN, WT_CFUNC } word_type_t;
 typedef struct {
   const char *key;
   word_type_t type;
+  bool immediate;
   union {
     cell_t *var;
     cell_list_t def;

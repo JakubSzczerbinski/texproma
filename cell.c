@@ -56,6 +56,14 @@ cell_t *cell_dup(cell_t *c) {
   return nc;
 }
 
+void cell_swap(cell_t *c1, cell_t *c2) {
+  cell_t t;
+
+  memcpy(&t, c1, sizeof(cell_t));
+  memcpy(c1, c2, sizeof(cell_t));
+  memcpy(c2, &t, sizeof(cell_t));
+}
+
 void cell_delete(cell_t *c) {
   if (c->type == CT_ATOM)
     free((void *)c->atom);

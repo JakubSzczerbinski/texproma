@@ -18,7 +18,7 @@ typedef struct tpmi {
   dict_t *words;        /* word dictionary */
 
   char errmsg[ERRMSG_LENGTH];
-  tpmi_mode_t mode;     /* current working mode */
+  tpmi_mode_t *mode;    /* current working mode */
   word_t *curr_word;    /* word being compiled now */
 } tpmi_t;
 

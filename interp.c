@@ -152,9 +152,12 @@ static tpmi_status_t do_store(tpmi_t *interp) {
   cell_t *value = STACK_POP(&interp->stack);
   word_t *word = dict_find(interp->words, key->atom);
   cell_delete(key);
-  if (word->var != NULL)
-    cell_delete(word->var);
-  word->var = value;
+  if (word->var != NULL) {
+    cell_swap(word->var, value);
+    cell_delete(value);
+  } else {
+    word->var = value;
+  }
   return TPMI_OK;
 }
 
@@ -323,6 +326,7 @@ typedef struct {
   const char *id;
   void *fn;
   const char *sig;
+  bool immediate;
 } func_ctor_t;
 
 static func_ctor_t builtins[] = {
@@ -334,8 +338,8 @@ static func_ctor_t builtins[] = {
   { "!", &do_store, "?a" },
   { "@", &do_load, "a" },
   { ".p", &do_print, "?" },
-  { ".s", &do_print_stack, "" },
-  { ".w", &do_print_dict, "" },
+  { ".s", &do_print_stack, "", true },
+  { ".w", &do_print_dict, "", true },
   { "mono", &do_mono, "" },
   { "color", &do_color, "" },
   { NULL }
@@ -360,6 +364,8 @@ static func_ctor_t cfuncs[] = {
 };
 
 static char *initprog[] = {
+  ": [ 0 state ! ; immediate",
+  ": ] 1 state ! ;",
   ": _ .p drop ;",
   ": dup 0 pick ;",
   ": over 1 pick ;",
@@ -381,6 +387,7 @@ tpmi_t *tpmi_new() {
     word->type = WT_BUILTIN;
     word->func.fn = (void *)builtin->fn;
     word->func.sig = builtin->sig;
+    word->immediate = builtin->immediate;
   }
 
   /* Initialize C function calls */
@@ -390,6 +397,12 @@ tpmi_t *tpmi_new() {
     word->func.fn = cfunc->fn;
     word->func.sig = cfunc->sig;
   }
+
+  /* Add special variables */
+  word_t *state = dict_add(interp->words, "state");
+  state->type = WT_VAR;
+  state->var = cell_int(0);
+  interp->mode = (tpmi_mode_t *)&state->var->i;
 
   /* Compile initial program */
   for (char **line = initprog; *line; line++)
@@ -441,18 +454,23 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
 
     c = make_cell(token);
 
-    switch (interp->mode) {
+    switch (*interp->mode) {
       case TPMI_EVAL: 
         /* evaluation mode */
         status = TPMI_NEED_MORE;
 
-        if (strcmp(token, ":") == 0)
-          interp->mode = TPMI_COMPILE;
-        else if (strcmp(token, "'") == 0)
-          interp->mode = TPMI_FUNCREF;
+        if (strcmp(token, ":") == 0) {
+          *interp->mode = TPMI_COMPILE;
+          interp->curr_word = NULL;
+        } else if (strcmp(token, "'") == 0)
+          *interp->mode = TPMI_FUNCREF;
         else if (strcasecmp(token, "variable") == 0)
-          interp->mode = TPMI_DEFVAR;
-        else
+          *interp->mode = TPMI_DEFVAR;
+        else if (strcasecmp(token, "immediate") == 0) {
+          if (interp->curr_word != NULL)
+            interp->curr_word->immediate = true;
+          status = TPMI_OK;
+        } else
           status = eval_cell(interp, &c);
         break;
 
@@ -460,8 +478,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
         /* compilation mode */
 
         if (strcmp(token, ";") == 0) {
-          interp->mode = TPMI_EVAL;
-          interp->curr_word = NULL;
+          *interp->mode = TPMI_EVAL;
           status = TPMI_OK;
           continue;
         }
@@ -472,6 +489,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
 
             if (word->type == WT_NULL) {
               word->type = WT_DEF;
+              word->immediate = false;
               TAILQ_INIT(&word->def);
               interp->curr_word = word;
               status = TPMI_NEED_MORE;
@@ -484,13 +502,17 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
             status = TPMI_ERROR;
           }
         } else {
-          STACK_PUSH(&interp->curr_word->def, cell_dup(&c));
-          status = TPMI_NEED_MORE;
+          if (c.type == CT_ATOM && dict_add(interp->words, token)->immediate) {
+            status = eval_cell(interp, &c);
+          } else {
+            STACK_PUSH(&interp->curr_word->def, cell_dup(&c));
+            status = TPMI_NEED_MORE;
+          }
         }
         break;
 
       case TPMI_DEFVAR:
-        interp->mode = TPMI_EVAL;
+        *interp->mode = TPMI_EVAL;
 
         if (c.type == CT_ATOM) {
           dict_add(interp->words, token)->type = WT_VAR;
@@ -502,7 +524,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
         break;
 
       case TPMI_FUNCREF:
-        interp->mode = TPMI_EVAL;
+        *interp->mode = TPMI_EVAL;
         status = TPMI_ERROR;
 
         if (c.type == CT_ATOM)
