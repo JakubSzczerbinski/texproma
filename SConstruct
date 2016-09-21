@@ -1,8 +1,14 @@
 #!python
 
-import os
+import SCons.Builder
+import SCons.Action
 
-env = Environment(ENV = os.environ)
+env = Environment()
+env['ENV']['PATH'] = ['/opt/local/bin', '/usr/bin', '/bin']
+
+env['BUILDERS']['ctags'] = \
+    SCons.Builder.Builder(action='ctags --tag-relative=yes -f $TARGET $SOURCES')
+
 env.Append(CCFLAGS = '-g -O2 -Wall')
 env.Append(LINKFLAGS = '-g')
 
@@ -20,5 +26,8 @@ env.Append(CPPPATH = ['libffcall/avcall'])
 SConscript('libtexproma/SConscript')
 
 sources = ['main.c', 'cell.c', 'dict.c', 'gui.c', 'interp.c']
-t = env.Program(target='texproma', source=sources)
-Clean(t, 'texproma.dSYM')
+
+Alias('tags', env.ctags(source=[Glob('*.c'), Glob('*.h')], target='tags'))
+
+prog = env.Program(target='texproma', source=sources)
+Clean(prog, ['texproma.dSYM', Glob('*~')])
