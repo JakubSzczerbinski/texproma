@@ -19,10 +19,9 @@ void tpm_implode(tpm_color_buf c,
                  tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b);
 
 /* generate ops */
-void tpm_plasma(tpm_mono_buf dst, uint8_t xsines, uint8_t ysines,
-                float xphase, float yphase);
-void tpm_light(tpm_mono_buf dst, uint8_t type, float radius);
-void tpm_perlin_plasma(tpm_mono_buf dst, uint8_t step, uint32_t seed);
+void tpm_plasma(tpm_mono_buf dst, unsigned xsines, unsigned ysines);
+void tpm_light(tpm_mono_buf dst, unsigned type, float radius);
+void tpm_perlin_plasma(tpm_mono_buf dst, unsigned step, unsigned seed);
 
 /* buffer ops */
 void tpm_set(tpm_mono_buf dst, int value);
@@ -42,17 +41,12 @@ void tpm_uvmap(tpm_mono_buf dst, tpm_mono_buf src,
                tpm_mono_buf umap, tpm_mono_buf vmap, 
                float ustrength, float vstrength);
 
-#if 0
-void tpm_colors_change_hsv(tpm_rgb_buf_t *dst, tpm_rgb_buf_t *src,
-                           float hue, float saturation);
-void tpm_colors_invert(tpm_mono_buf_t *dst, tpm_mono_buf_t *src);
-void tpm_colors_sine_color(tpm_mono_buf_t *dst, tpm_mono_buf_t *src,
-                           uint8_t sines);
-void tpm_colors_contrast(tpm_mono_buf_t *dst, tpm_mono_buf_t *src,
-                         uint8_t contrast);
-void tpm_colors_colorize(tpm_rgb_buf_t *dst, tpm_mono_buf_t *src,
-                         color_t c1, color_t c2);
-void tpm_colors_average(tpm_mono_buf_t *dst, tpm_rgb_buf_t *src);
-#endif
+/* color ops */
+void tpm_invert(tpm_mono_buf dst, tpm_mono_buf src);
+void tpm_sine_color(tpm_mono_buf dst, tpm_mono_buf src, unsigned sine_cycles);
+void tpm_brightness(tpm_mono_buf dst, tpm_mono_buf src, float factor);
+void tpm_contrast(tpm_mono_buf dst, tpm_mono_buf src, float contrast);
+void tpm_colorize(tpm_color_buf dst, tpm_mono_buf src, color_t c1, color_t c2);
+void tpm_grayscale(tpm_mono_buf dst, tpm_color_buf src);
 
 #endif

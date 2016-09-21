@@ -360,6 +360,12 @@ static func_ctor_t cfuncs[] = {
   { "twist", &tpm_twist, "Mmf" },
   { "move", &tpm_move, "Mmii" },
   { "uvmap", &tpm_uvmap, "Mmmmff" },
+  { "invert", &tpm_invert, "Mm" },
+  { "sine-color", &tpm_sine_color, "Mmi" },
+  { "brightness", &tpm_brightness, "Mmf" },
+  { "contrast", &tpm_contrast, "Mmf" },
+  { "colorize", &tpm_colorize, "Cmii" },
+  { "grayscale", &tpm_grayscale, "Mc" },
   { NULL }
 };
 

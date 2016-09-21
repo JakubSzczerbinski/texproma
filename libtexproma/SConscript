@@ -6,7 +6,7 @@ env['ENV']['PATH'] = ['/opt/local/bin', '/usr/bin', '/bin']
 env.Append(CCFLAGS = '-g -O2 -Wall')
 env.Append(LINKFLAGS = '-g')
 
-sources = ['common.c', 'distort.c', 'generate.c', 'layers.c']
-# , 'colors.c', 'filter.c']
+sources = ['common.c', 'distort.c', 'generate.c', 'layers.c', 'colors.c']
+# 'filter.c'
 lib = env.StaticLibrary(target='texproma', source=sources)
 Clean(lib, Glob('*~'))

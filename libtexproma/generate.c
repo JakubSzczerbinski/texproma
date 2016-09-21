@@ -1,31 +1,32 @@
 #include "libtexproma_private.h"
 
-void tpm_plasma(tpm_mono_buf dst, uint8_t xsines, uint8_t ysines,
-                float xphase, float yphase)
-{
-  int x, y;
+void tpm_plasma(tpm_mono_buf dst, unsigned xsines, unsigned ysines) {
+  xsines = constrain(xsines, 1, 100);
+  ysines = constrain(ysines, 1, 100);
 
   float dw = 1.0f / (float)TP_WIDTH;
   float dh = 1.0f / (float)TP_HEIGHT;
 
-  for (y = 0; y < TP_WIDTH; y++) {
-    float yrad = (float)ysines * ((float)y * dh + yphase) * M_PI; 
+  for (int y = 0; y < TP_WIDTH; y++) {
+    float yrad = (float)ysines * ((float)y * dh) * M_PI; 
 
-    for (x = 0; x < TP_WIDTH; x++) {
-      float xrad = (float)xsines * ((float)x * dw + xphase) * M_PI;
+    for (int x = 0; x < TP_WIDTH; x++) {
+      float xrad = (float)xsines * ((float)x * dw) * M_PI;
 
-      uint8_t pixel = 127.0f + (sinf(xrad) + sinf(yrad)) * 256.0f / 3.0f;
+      int pixel = 0.5f * (sinf(xrad) + sinf(yrad)) * 127.0f + 127.0f;
       tpm_put_pixel(dst, x, y, pixel);
     }
   }
 }
 
-void tpm_light(tpm_mono_buf dst, uint8_t type, float radius) {
-  int x, y;
+void tpm_light(tpm_mono_buf dst, unsigned type, float radius) {
+  type = constrain(type, 0, 1);
+  radius = constrain(radius, 0.01f, 2.0f);
+
   float s = 3.0f - radius;
 
-  for (y = 0; y < TP_HEIGHT; y++) {
-    for (x = 0; x < TP_WIDTH; x++) {
+  for (int y = 0; y < TP_HEIGHT; y++) {
+    for (int x = 0; x < TP_WIDTH; x++) {
       float r = sqrtf((float)((x - 128) * (x - 128) + (y - 128) * (y - 128))) * s;
 
       int v;
@@ -48,15 +49,13 @@ void tpm_light(tpm_mono_buf dst, uint8_t type, float radius) {
   }
 }
 
-void tpm_perlin_plasma(tpm_mono_buf dst, uint8_t step, uint32_t seed) {
-  int x, y;
-
-  for (y = 0; y < TP_HEIGHT; y += step)
-    for (x = 0; x < TP_WIDTH; x += step)
+void tpm_perlin_plasma(tpm_mono_buf dst, unsigned step, unsigned seed) {
+  for (int y = 0; y < TP_HEIGHT; y += step)
+    for (int x = 0; x < TP_WIDTH; x += step)
       tpm_put_pixel(dst, x, y, tpm_random(&seed));
 
-  for (x = 0; x < TP_HEIGHT; x += step) {
-    for (y = 0; y < TP_WIDTH; y += step) {
+  for (int x = 0; x < TP_HEIGHT; x += step) {
+    for (int y = 0; y < TP_WIDTH; y += step) {
       float p1 = tpm_get_pixel(dst, x, y);
       float p2 = tpm_get_pixel(dst, x, y + step);
 
@@ -74,8 +73,8 @@ void tpm_perlin_plasma(tpm_mono_buf dst, uint8_t step, uint32_t seed) {
     }
   }
 
-  for (y = 0; y < TP_HEIGHT; y++) {
-    for (x = 0; x < TP_WIDTH; x += step) {
+  for (int y = 0; y < TP_HEIGHT; y++) {
+    for (int x = 0; x < TP_WIDTH; x += step) {
       float p1 = tpm_get_pixel(dst, x, y);
       float p2 = tpm_get_pixel(dst, x + step, y);
 
@@ -83,9 +82,8 @@ void tpm_perlin_plasma(tpm_mono_buf dst, uint8_t step, uint32_t seed) {
       float t2 = 0.5f * ((float)tpm_get_pixel(dst, x + (step << 1), y) - p1);
 
       float ds = 1.0f / (float)step;
-      float s;
 
-      int i;
+      float s; int i;
 
       for (i = 0, s = 0.0f; i < step; i++, s += ds)
         tpm_put_pixel(dst, x + i, y, 

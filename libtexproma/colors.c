@@ -1,18 +1,14 @@
-#include "libtxtproc_private.h"
+#include "libtexproma_private.h"
 
-/**
- * @param rc_dst  destination (RGB register number)
- * @param rc_src  source (RGB register number)
- * @param fcu_hue hue change (unsigned clamped float [0.0f, 1.0f])
- * @param fcu_sat saturation change (unsigned clamped float [0.0f, 1.0f])
- */
-
-void tp_op_colors_change_hsv(uint8_t rc_dst, uint8_t rc_src, float fcu_hue, float fcu_sat)
+#if 0
+void tpm_change_hsv(tpm_color_buf dst, tpm_color_buf src,
+                    float hue, float sat)
 {
-  int16_t x, y;
+  hue = constrain(hue, 0.0f, 1.0f);
+  sat = constrain(sat, 0.0f, 1.0f);
 
-  for (y = 0; y < TP_HEIGHT; y++) {
-    for (x = 0; x < TP_WIDTH; x++) {
+  for (int y = 0; y < TP_HEIGHT; y++) {
+    for (int x = 0; x < TP_WIDTH; x++) {
       colorf_t c;
 
       tp_reg_get_rgb_pixelf(rc_src, x, y, &c);
@@ -21,143 +17,96 @@ void tp_op_colors_change_hsv(uint8_t rc_dst, uint8_t rc_src, float fcu_hue, floa
 
       tp_rgb_to_hsv(c.r, c.g, c.b, &h, &s, &v);
 
-      h += fcu_hue;
+      h += hue;
 
       if (h > 1.0f)
           h -= 1.0f;
 
-      s *= fcu_sat;
+      s *= sat;
 
-      tp_hsv_to_rgb(&c.r, &c.g, &c.b, h, s, v);
+      tpm_hsv_to_rgb(&c.r, &c.g, &c.b, h, s, v);
 
-      tp_reg_put_rgb_pixelf(rc_dst, x, y, &c);
+      tpm_put_rgb_pixelf(rc_dst, x, y, &c);
+    }
+  }
+}
+#endif
+
+void tpm_invert(tpm_mono_buf dst, tpm_mono_buf src) {
+  for (int y = 0; y < TP_HEIGHT; y++)
+    for (int x = 0; x < TP_WIDTH; x++)
+      tpm_put_pixel(dst, x, y, ~tpm_get_pixel(src, x, y));
+}
+
+void tpm_sine_color(tpm_mono_buf dst, tpm_mono_buf src, unsigned sine_cycles) {
+  static int tab[256];
+
+  sine_cycles = constrain(sine_cycles, 2, 32);
+
+  for (int i = 0; i < 256; i++)
+      tab[i] = 127 - (sinf(i / 256.0f * sine_cycles * M_2_PI) * 127.0f) + 127;
+
+  for (int y = 0; y < TP_HEIGHT; y++)
+    for (int x = 0; x < TP_WIDTH; x++)
+      tpm_put_pixel(dst, x, y, tab[tpm_get_pixel(src, x, y)]);
+}
+
+
+/*
+ * @param factor - positive will brighten, negative will darken picture
+ */
+void tpm_brightness(tpm_mono_buf dst, tpm_mono_buf src, float factor) {
+  factor = constrain(factor, -1.0f, 1.0f);
+
+  for (int y = 0; y < TP_HEIGHT; y++) {
+    for (int x = 0; x < TP_WIDTH; x++) {
+      float p = tpm_get_pixel(src, x, y);
+
+      p += (factor < 0) ? (-p * factor) : ((1.0f - p) * factor);
+
+      tpm_put_pixel(dst, x, y, (int)p);
     }
   }
 }
 
-/**
- * @param r_dst   destination (register number)
- * @param r_src   source (register number)
+/*
+ * @param constrast - contrast change
  */
+void tpm_contrast(tpm_mono_buf dst, tpm_mono_buf src, float contrast) {
+  contrast = constrain(contrast, 0.0f, 1.0f);
 
-void tp_op_colors_invert(uint8_t r_dst, uint8_t r_src)
-{
-  int16_t x, y;
+  for (int y = 0; y < TP_HEIGHT; y++) {
+    for (int x = 0; x < TP_WIDTH; x++) {
+      float p = tpm_get_pixel(src, x, y);
 
-  for (y = 0; y < TP_HEIGHT; y++)
-    for (x = 0; x < TP_WIDTH; x++)
-      tp_reg_put_pixel(r_dst, x, y, ~tp_reg_get_pixel(r_src, x, y));
-}
-
-/**
- * @param r_dst   destination (register number)
- * @param r_src   source (register number)
- * @param bu_sines  number of sine cycles (unsigned byte [2, 32])
- */
-
-static int16_t tp_tab[256];
-
-void tp_op_colors_sine_color(uint8_t r_dst, uint8_t r_src, uint8_t bu_sines)
-{
-  int i;
-
-  for (i = 0; i < 256; i++)
-      tp_tab[i] = 127 - (int16_t)(sinf(i / 256.0f * bu_sines * M_2_PI) * 127.0f) + 127;
-
-  int16_t x, y;
-
-  for (y = 0; y < TP_HEIGHT; y++)
-    for (x = 0; x < TP_WIDTH; x++)
-      tp_reg_put_pixel(r_dst, x, y, tp_tab[tp_reg_get_pixel(r_src, x, y)]);
-}
-
-/**
- * @param r_dst     destination (register number)
- * @param r_src     source (register number)
- * @param ics_amount  brightness factor - positive will brighten, negative will darken picture (clamped signed fixed 8.8 [-1.0, 1.0])
- */
-
-void tp_op_colors_bright(uint8_t r_dst, uint8_t r_src, int16_t ics_amount)
-{
-  int16_t x, y;
-
-  for (y = 0; y < TP_HEIGHT; y++) {
-    for (x = 0; x < TP_WIDTH; x++) {
-      int16_t p = tp_reg_get_pixel(r_src, x, y);
-
-      p += (ics_amount < 0) ? ((-p * ics_amount) >> 8) : (((255 - p) * ics_amount) >> 8);
-
-      tp_reg_put_pixel(r_dst, x, y, p);
+      tpm_put_pixel(dst, x, y, (p - 128.0f) * contrast + 128.0f);
     }
   }
 }
 
-/**
- * @param r_dst     destination (register number)
- * @param r_src     source (register number)
- * @param bu_constrast  contrast change (unsigned byte)
- */
+void tpm_colorize(tpm_color_buf dst, tpm_mono_buf src, color_t c1, color_t c2) {
+  colori d = { c2.r - c1.r, c2.g - c1.g, c2.b - c1.b };
 
-void tp_op_colors_contrast(uint8_t r_dst, uint8_t r_src, uint8_t bu_contrast)
-{
-  int16_t cont = 127 + (bu_contrast >= 0) ? (bu_contrast * 7) : (bu_contrast * 120 / 127);
+  for (int y = 0; y < TP_HEIGHT; y++) {
+    for (int x = 0; x < TP_WIDTH; x++) {
+      int p = tpm_get_pixel(src, x, y);
 
-  int16_t x, y;
+      colori c;
 
-  for (y = 0; y < TP_HEIGHT; y++) {
-    for (x = 0; x < TP_WIDTH; x++) {
-      int16_t p = tp_reg_get_pixel(r_src, x, y) - 128;
+      c.r = ((d.r * p) >> 8) + c1.r;
+      c.g = ((d.g * p) >> 8) + c1.g;
+      c.b = ((d.b * p) >> 8) + c2.b;
 
-      p = (bu_contrast >= 0) ? ((p * cont) >> 7) : ((p << 7) / cont);
-
-      tp_reg_put_pixel(r_dst, x, y, p + 128);
+      tpm_put_color_pixel(dst, x, y, c);
     }
   }
 }
 
-/**
- * @param r_dst   destination (RGB register number)
- * @param r_src   source (register number)
- * @param c_c1    first color (RGB color)
- * @param c_c2    second color (RGB color)
- */
-
-void tp_op_colors_colorize(uint8_t dst, uint8_t src, color_t c_c1, color_t c_c2)
-{
-  colori_t d = { c_c2.r - c_c1.r, c_c2.g - c_c1.g, c_c2.b - c_c1.b };
-
-  int16_t x, y;
-
-  for (y = 0; y < TP_HEIGHT; y++) {
-    for (x = 0; x < TP_WIDTH; x++) {
-      int16_t p = tp_reg_get_pixel(src, x, y);
-
-      colori_t c;
-
-      c.r = ((d.r * p) >> 8) + c_c1.r;
-      c.g = ((d.g * p) >> 8) + c_c1.g;
-      c.b = ((d.b * p) >> 8) + c_c2.b;
-
-      tp_reg_put_rgb_pixel(dst, x, y, &c);
-    }
-  }
-}
-
-/**
- * @param r_dst   destination (register number)
- * @param r_src   source (RGB register number)
- */
-
-void tp_op_colors_average(uint8_t r_dst, uint8_t r_src)
-{
-  int16_t x = 0, y = 0;
-
-  for (y = 0; y < TP_HEIGHT; y++) {
-    for (x = 0; x < TP_WIDTH; x++) {
-      colori_t c;
-    
-      tp_reg_get_rgb_pixel(r_src, x, y, &c);
-      tp_reg_put_pixel(r_dst, x, y, (c.r + c.g + c.b) / 3);
+void tpm_grayscale(tpm_mono_buf dst, tpm_color_buf src) {
+  for (int y = 0; y < TP_HEIGHT; y++) {
+    for (int x = 0; x < TP_WIDTH; x++) {
+      colori c = tpm_get_color_pixel(src, x, y);
+      tpm_put_pixel(dst, x, y, 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b);
     }
   }
 }
