@@ -9,7 +9,7 @@
 /* TEXture PROcessing MAchine interpeter */
 
 typedef enum { TPMI_ERROR, TPMI_OK, TPMI_NEED_MORE } tpmi_status_t;
-typedef enum { TPMI_EVAL, TPMI_COMPILE, TPMI_DEFVAR } tpmi_mode_t;
+typedef enum { TPMI_EVAL, TPMI_COMPILE, TPMI_DEFVAR, TPMI_FUNCREF } tpmi_mode_t;
 
 #define ERRMSG_LENGTH 128
 

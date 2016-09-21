@@ -444,19 +444,16 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
     switch (interp->mode) {
       case TPMI_EVAL: 
         /* evaluation mode */
-        if (strcmp(token, ":") == 0) {
+        status = TPMI_NEED_MORE;
+
+        if (strcmp(token, ":") == 0)
           interp->mode = TPMI_COMPILE;
-          status = TPMI_NEED_MORE;
-          continue;
-        }
-
-        if (strcasecmp(token, "variable") == 0) {
+        else if (strcmp(token, "'") == 0)
+          interp->mode = TPMI_FUNCREF;
+        else if (strcasecmp(token, "variable") == 0)
           interp->mode = TPMI_DEFVAR;
-          status = TPMI_NEED_MORE;
-          continue;
-        }
-
-        status = eval_cell(interp, &c);
+        else
+          status = eval_cell(interp, &c);
         break;
 
       case TPMI_COMPILE:
@@ -493,15 +490,29 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
         break;
 
       case TPMI_DEFVAR:
+        interp->mode = TPMI_EVAL;
+
         if (c.type == CT_ATOM) {
           dict_add(interp->words, token)->type = WT_VAR;
-          interp->mode = TPMI_EVAL;
-          return TPMI_OK;
+          status = TPMI_OK;
         } else {
           ERROR(interp, "'variable' expects name");
-          interp->mode = TPMI_EVAL;
-          return TPMI_ERROR;
+          status = TPMI_ERROR;
         }
+        break;
+
+      case TPMI_FUNCREF:
+        interp->mode = TPMI_EVAL;
+        status = TPMI_ERROR;
+
+        if (c.type == CT_ATOM)
+          if (dict_add(interp->words, token)->type == WT_CFUNC) {
+            STACK_PUSH(&interp->stack, cell_dup(&c));
+            status = TPMI_OK;
+          }
+
+        if (status == TPMI_ERROR)
+          ERROR(interp, "'tick' expects C function name");
         break;
     }
 
