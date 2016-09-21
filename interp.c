@@ -415,19 +415,31 @@ static bool read_int(const char *str, int *i) {
   return *end == '\0';
 }
 
+static cell_t make_cell(const char *token) {
+  int i; float f;
+
+  if (read_int(token, &i))
+    return (cell_t){CT_INT, {.i = i}};
+  else if (read_float(token, &f))
+    return (cell_t){CT_FLOAT, {.f = f}};
+  else
+    return (cell_t){CT_ATOM, {.atom = token}};
+}
+
 tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
   const char *token;
   char *state, *orig_state;
-  size_t c = 0;
+  size_t n = 0;
+  cell_t c;
   tpmi_status_t status = TPMI_OK;
 
   state = orig_state = strdup(line);
 
   while ((token = strsep(&state, " \n")) != NULL) {
-    int i; float f;
-
     if (strlen(token) == 0)
       continue;
+
+    c = make_cell(token);
 
     switch (interp->mode) {
       case TPMI_EVAL: 
@@ -444,16 +456,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
           continue;
         }
 
-        if (read_int(token, &i)) {
-          cell_t c_i = {CT_INT, {.i = i}};
-          status = eval_cell(interp, &c_i);
-        } else if (read_float(token, &f)) {
-          cell_t c_f = {CT_FLOAT, {.f = f}};
-          status = eval_cell(interp, &c_f);
-        } else {
-          cell_t c_id = {CT_ATOM, {.atom = token}};
-          status = eval_cell(interp, &c_id);
-        }
+        status = eval_cell(interp, &c);
         break;
 
       case TPMI_COMPILE:
@@ -466,24 +469,8 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
           continue;
         }
 
-        if (read_int(token, &i)) {
-          if (interp->curr_word) {
-            STACK_PUSH(&interp->curr_word->def, cell_int(i));
-            status = TPMI_NEED_MORE;
-          } else {
-            ERROR(interp, "expected word name, got integer %d", i);
-            status = TPMI_ERROR;
-          }
-        } else if (read_float(token, &f)) {
-          if (interp->curr_word) {
-            STACK_PUSH(&interp->curr_word->def, cell_float(f));
-            status = TPMI_NEED_MORE;
-          } else {
-            ERROR(interp, "expected word name, got float %f", f);
-            status = TPMI_ERROR;
-          }
-        } else {
-          if (interp->curr_word == NULL) {
+        if (interp->curr_word == NULL) {
+          if (c.type == CT_ATOM) {
             word_t *word = dict_add(interp->words, token); 
 
             if (word->type == WT_NULL) {
@@ -496,27 +483,30 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
               status = TPMI_ERROR;
             }
           } else {
-            STACK_PUSH(&interp->curr_word->def, cell_atom(token));
-            status = TPMI_NEED_MORE;
+            ERROR(interp, "expected word name");
+            status = TPMI_ERROR;
           }
+        } else {
+          STACK_PUSH(&interp->curr_word->def, cell_dup(&c));
+          status = TPMI_NEED_MORE;
         }
         break;
 
       case TPMI_DEFVAR:
-        if (read_int(token, &i) || read_float(token, &f)) {
-          ERROR(interp, "'variable' expects name");
-          interp->mode = TPMI_EVAL;
-          return TPMI_ERROR;
-        } else {
+        if (c.type == CT_ATOM) {
           dict_add(interp->words, token)->type = WT_VAR;
           interp->mode = TPMI_EVAL;
           return TPMI_OK;
+        } else {
+          ERROR(interp, "'variable' expects name");
+          interp->mode = TPMI_EVAL;
+          return TPMI_ERROR;
         }
         break;
     }
 
     if (status == TPMI_ERROR) {
-      fprintf(stderr, RED "failure at token %zu\n" RESET, c + 1);
+      fprintf(stderr, RED "failure at token %zu\n" RESET, n + 1);
       fprintf(stderr, RED "error: " RESET "%s\n", interp->errmsg);
       break;
     }
