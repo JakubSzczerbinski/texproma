@@ -189,21 +189,22 @@ static void print_words(dict_t *dict, word_type_t type) {
     if (word->key == NULL || word->type != type)
       continue;
 
-    if (word->type == WT_DEF) {
+    if (word->type == WT_VAR) {
+      printf(MAGENTA "%s" RESET " = " BOLD, word->key);
+      print_cell(word->var);
+      printf(RESET);
+    } else if (word->type == WT_DEF) {
       cell_t *c;
       printf(BOLD ": %s ", word->key);
       TAILQ_FOREACH(c, &word->def, list)
         print_cell(c);
       printf(";" RESET);
     } else if (word->type == WT_BUILTIN) {
-      printf(BOLD BLUE "%s" RESET " is builtin with %zu arguments",
-             word->key, word->builtin.args);
+      printf(BLUE "%s" RESET BOLD " (%s)" RESET, word->key, word->func.sig);
     } else if (word->type == WT_CFUNC) {
-      printf(BOLD GREEN "%s" RESET " is C function with signature "
-             BOLD "%s" RESET,
-             word->key, word->cfunc.sig);
+      printf(GREEN "%s" RESET BOLD " (%s)" RESET, word->key, word->func.sig);
     } else {
-      printf(BOLD RED "%s is ???" RESET, word->key);
+      abort();
     }
 
     putchar('\n');
@@ -212,6 +213,7 @@ static void print_words(dict_t *dict, word_type_t type) {
 
 void print_dict(dict_t *dict) {
   print_words(dict, WT_DEF);
+  print_words(dict, WT_VAR);
   print_words(dict, WT_BUILTIN);
   print_words(dict, WT_CFUNC);
 }

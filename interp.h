@@ -9,6 +9,7 @@
 /* TEXture PROcessing MAchine interpeter */
 
 typedef enum { TPMI_ERROR, TPMI_OK, TPMI_NEED_MORE } tpmi_status_t;
+typedef enum { TPMI_EVAL, TPMI_COMPILE, TPMI_DEFVAR } tpmi_mode_t;
 
 #define ERRMSG_LENGTH 128
 
@@ -17,7 +18,7 @@ typedef struct tpmi {
   dict_t *words;        /* word dictionary */
 
   char errmsg[ERRMSG_LENGTH];
-  bool compilation;     /* is compilation mode active ? */
+  tpmi_mode_t mode;     /* current working mode */
   word_t *curr_word;    /* word being compiled now */
 } tpmi_t;
 

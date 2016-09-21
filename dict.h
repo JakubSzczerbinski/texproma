@@ -3,21 +3,18 @@
 
 #include "cell.h"
 
-typedef enum { WT_NULL, WT_DEF, WT_BUILTIN, WT_CFUNC } word_type_t;
+typedef enum { WT_NULL, WT_VAR, WT_DEF, WT_BUILTIN, WT_CFUNC } word_type_t;
 
 typedef struct {
   const char *key;
   word_type_t type;
   union {
+    cell_t *var;
     cell_list_t def;
     struct {
       void (*fn)();
-      size_t args;
-    } builtin;
-    struct {
-      void (*fn)();
       const char *sig;
-    } cfunc;
+    } func;
   };
 } word_t;
 

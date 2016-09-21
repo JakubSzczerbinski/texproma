@@ -134,6 +134,30 @@ static tpmi_status_t do_print_dict(tpmi_t *interp) {
   return TPMI_OK;
 }
 
+static tpmi_status_t do_load(tpmi_t *interp) {
+  cell_t *key = STACK_POP(&interp->stack);
+  word_t *word = dict_find(interp->words, key->atom);
+  if (word->var == NULL) {
+    ERROR(interp, "variable '%s' has no value", key->atom);
+    cell_delete(key);
+    return TPMI_ERROR;
+  }
+  cell_delete(key);
+  STACK_PUSH(&interp->stack, cell_dup(word->var));
+  return TPMI_OK;
+}
+
+static tpmi_status_t do_store(tpmi_t *interp) {
+  cell_t *key = STACK_POP(&interp->stack);
+  cell_t *value = STACK_POP(&interp->stack);
+  word_t *word = dict_find(interp->words, key->atom);
+  cell_delete(key);
+  if (word->var != NULL)
+    cell_delete(word->var);
+  word->var = value;
+  return TPMI_OK;
+}
+
 static tpmi_status_t do_mono(tpmi_t *interp) {
   STACK_PUSH(&interp->stack, cell_mono());
   return TPMI_OK;
@@ -155,7 +179,8 @@ static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
       return TPMI_ERROR;
     }
 
-    return eval_word(interp, word);
+    if (word->type != WT_VAR)
+      return eval_word(interp, word);
   }
 
   STACK_PUSH(&interp->stack, cell_dup(c));
@@ -404,67 +429,90 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
     if (strlen(token) == 0)
       continue;
 
-    if (strcmp(token, ":") == 0) {
-      interp->compilation = true;
-      status = TPMI_NEED_MORE;
-      continue;
-    }
-
-    if (strcmp(token, ";") == 0) {
-      interp->compilation = false;
-      interp->curr_word = NULL;
-      status = TPMI_OK;
-      continue;
-    }
-
-    if (interp->compilation) {
-      /* compilation mode */
-      if (read_int(token, &i)) {
-        if (interp->curr_word) {
-          STACK_PUSH(&interp->curr_word->def, cell_int(i));
+    switch (interp->mode) {
+      case TPMI_EVAL: 
+        /* evaluation mode */
+        if (strcmp(token, ":") == 0) {
+          interp->mode = TPMI_COMPILE;
           status = TPMI_NEED_MORE;
-        } else {
-          ERROR(interp, "expected word name, got integer %d", i);
-          status = TPMI_ERROR;
+          continue;
         }
-      } else if (read_float(token, &f)) {
-        if (interp->curr_word) {
-          STACK_PUSH(&interp->curr_word->def, cell_float(f));
-          status = TPMI_NEED_MORE;
-        } else {
-          ERROR(interp, "expected word name, got float %f", f);
-          status = TPMI_ERROR;
-        }
-      } else {
-        if (interp->curr_word == NULL) {
-          word_t *word = dict_add(interp->words, token); 
 
-          if (word->type == WT_NULL) {
-            word->type = WT_DEF;
-            TAILQ_INIT(&word->def);
-            interp->curr_word = word;
+        if (strcasecmp(token, "variable") == 0) {
+          interp->mode = TPMI_DEFVAR;
+          status = TPMI_NEED_MORE;
+          continue;
+        }
+
+        if (read_int(token, &i)) {
+          cell_t c_i = {CT_INT, {.i = i}};
+          status = eval_cell(interp, &c_i);
+        } else if (read_float(token, &f)) {
+          cell_t c_f = {CT_FLOAT, {.f = f}};
+          status = eval_cell(interp, &c_f);
+        } else {
+          cell_t c_id = {CT_ATOM, {.atom = token}};
+          status = eval_cell(interp, &c_id);
+        }
+        break;
+
+      case TPMI_COMPILE:
+        /* compilation mode */
+
+        if (strcmp(token, ";") == 0) {
+          interp->mode = TPMI_EVAL;
+          interp->curr_word = NULL;
+          status = TPMI_OK;
+          continue;
+        }
+
+        if (read_int(token, &i)) {
+          if (interp->curr_word) {
+            STACK_PUSH(&interp->curr_word->def, cell_int(i));
             status = TPMI_NEED_MORE;
           } else {
-            ERROR(interp, "word '%s' has been already defined", token);
+            ERROR(interp, "expected word name, got integer %d", i);
+            status = TPMI_ERROR;
+          }
+        } else if (read_float(token, &f)) {
+          if (interp->curr_word) {
+            STACK_PUSH(&interp->curr_word->def, cell_float(f));
+            status = TPMI_NEED_MORE;
+          } else {
+            ERROR(interp, "expected word name, got float %f", f);
             status = TPMI_ERROR;
           }
         } else {
-          STACK_PUSH(&interp->curr_word->def, cell_atom(token));
-          status = TPMI_NEED_MORE;
+          if (interp->curr_word == NULL) {
+            word_t *word = dict_add(interp->words, token); 
+
+            if (word->type == WT_NULL) {
+              word->type = WT_DEF;
+              TAILQ_INIT(&word->def);
+              interp->curr_word = word;
+              status = TPMI_NEED_MORE;
+            } else {
+              ERROR(interp, "word '%s' has been already defined", token);
+              status = TPMI_ERROR;
+            }
+          } else {
+            STACK_PUSH(&interp->curr_word->def, cell_atom(token));
+            status = TPMI_NEED_MORE;
+          }
         }
-      }
-    } else {
-      /* evaluation mode */
-      if (read_int(token, &i)) {
-        cell_t c_i = {CT_INT, {.i = i}};
-        status = eval_cell(interp, &c_i);
-      } else if (read_float(token, &f)) {
-        cell_t c_f = {CT_FLOAT, {.f = f}};
-        status = eval_cell(interp, &c_f);
-      } else {
-        cell_t c_id = {CT_ATOM, {.atom = token}};
-        status = eval_cell(interp, &c_id);
-      }
+        break;
+
+      case TPMI_DEFVAR:
+        if (read_int(token, &i) || read_float(token, &f)) {
+          ERROR(interp, "'variable' expects name");
+          interp->mode = TPMI_EVAL;
+          return TPMI_ERROR;
+        } else {
+          dict_add(interp->words, token)->type = WT_VAR;
+          interp->mode = TPMI_EVAL;
+          return TPMI_OK;
+        }
+        break;
     }
 
     if (status == TPMI_ERROR) {
