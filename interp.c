@@ -46,19 +46,6 @@ static tpmi_status_t do_drop(tpmi_t *interp) {
   return TPMI_OK;
 }
 
-static tpmi_status_t do_dup(tpmi_t *interp) {
-  STACK_PUSH(&interp->stack, cell_dup(STACK_TOP(&interp->stack)));
-  return TPMI_OK;
-}
-
-static tpmi_status_t do_swap(tpmi_t *interp) {
-  cell_t *a = STACK_POP(&interp->stack);
-  cell_t *b = STACK_POP(&interp->stack);
-  STACK_PUSH(&interp->stack, a);
-  STACK_PUSH(&interp->stack, b);
-  return TPMI_OK;
-}
-
 static tpmi_status_t do_roll(tpmi_t *interp) {
   cell_t *top = STACK_TOP(&interp->stack);
 
@@ -114,21 +101,28 @@ static tpmi_status_t do_pick(tpmi_t *interp) {
   return TPMI_OK;
 }
 
-static tpmi_status_t do_over(tpmi_t *interp) {
-  STACK_PUSH(&interp->stack, cell_dup(CELL_PREV(STACK_TOP(&interp->stack))));
-  return TPMI_OK;
-}
-
 static tpmi_status_t do_depth(tpmi_t *interp) {
   STACK_PUSH(&interp->stack, cell_int(stack_depth(&interp->stack)));
   return TPMI_OK;
 }
 
+static tpmi_status_t do_emit(tpmi_t *interp) {
+  cell_t *top = STACK_TOP(&interp->stack);
+
+  if (top->type != CT_INT) {
+    ERROR(interp, "'emit' requires integer at the top of stack");
+    return TPMI_ERROR;
+  }
+
+  putchar(top->i);
+  return do_drop(interp);
+}
+
 static tpmi_status_t do_print_stack(tpmi_t *interp) {
-  int i = 0;
+  size_t n = stack_depth(&interp->stack);
   cell_t *c;
   TAILQ_FOREACH(c, &interp->stack, list) {
-    printf("<%d> ", i++);
+    printf("<%zu> ", --n);
     print_cell(c);
     putchar('\n');
   }
@@ -168,72 +162,98 @@ static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
   return TPMI_OK;
 }
 
-static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
-  size_t depth = stack_depth(&interp->stack);
+typedef struct arg_info {
+  size_t args;
+  cell_t *first;
+} arg_info_t;
 
-  if (word->type == WT_BUILTIN) {
-    if (depth >= word->builtin.args)
-      return ((tpmi_fn_t)word->builtin.fn)(interp);
+static bool check_func_args(tpmi_t *interp, word_t *word, arg_info_t *ai) {
+  const char *sig = word->func.sig;
+  size_t depth = stack_depth(&interp->stack);
+  size_t n = strlen(sig);
+  size_t args = 0;
+
+  for (int i = n - 1; i >= 0; i--)
+    if (!isupper(sig[i]))
+      args++;
+
+  if (depth < args) {
     ERROR(interp, "'%s' expected %zu args, but stack has %zu elements",
-          word->key, word->builtin.args, depth);
-  } else if (word->type == WT_DEF) {
+          word->key, args, depth);
+    return false;
+  }
+
+  /* check arguments */
+  cell_t *arg = NULL;
+
+  for (int i = n - 1; i >= 0; i--) {
+    if (!isupper(sig[i])) {
+      arg = (arg == NULL) ? STACK_TOP(&interp->stack) : CELL_PREV(arg);
+
+      if (sig[i] == CT_ANY)
+        continue;
+
+      if (arg->type != sig[i]) {
+        ERROR(interp, "'%s' argument %u type mismatch - expected %c, got %c",
+              word->key, i, sig[i], arg->type);
+        return false;
+      }
+    }
+  }
+
+  ai->first = arg;
+  ai->args = args;
+
+  return true;
+}
+
+static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
+  if (word->type == WT_BUILTIN) {
+    arg_info_t ai;
+    if (!check_func_args(interp, word, &ai))
+      return TPMI_ERROR;
+    return ((tpmi_fn_t)word->func.fn)(interp);
+  }
+
+  if (word->type == WT_DEF) {
     cell_t *c;
     tpmi_status_t status = TPMI_OK;
     TAILQ_FOREACH(c, &word->def, list)
       if (!(status = eval_cell(interp, c)))
         break;
     return status;
-  } else if (word->type == WT_CFUNC) {
-    const char *sig = word->cfunc.sig;
-    size_t n = strlen(sig);
-    size_t args = 0;
+  }
+  
+  if (word->type == WT_CFUNC) {
+    arg_info_t ai;
 
-    for (int i = n - 1; i >= 0; i--)
-      if (islower(sig[i]))
-        args++;
-
-    if (depth < args) {
-      ERROR(interp, "'%s' expected %zu args, but stack has %zu elements",
-            word->key, args, depth);
+    if (!check_func_args(interp, word, &ai))
       return TPMI_ERROR;
-    }
- 
-    /* check arguments */
-    cell_t *arg = NULL;
 
-    for (int i = n - 1; i >= 0; i--) {
-      if (islower(sig[i])) {
-        arg = (arg == NULL) ? STACK_TOP(&interp->stack) : CELL_PREV(arg);
-
-        if (arg->type != sig[i]) {
-          ERROR(interp, "'%s' argument %u type mismatch - expected %c, got %c",
-                word->key, i, sig[i], arg->type);
-          return TPMI_ERROR;
-        }
-      }
-    }
+    const char *sig = word->func.sig;
+    size_t n = strlen(sig);
 
     /* construct a call */
     av_alist alist;
-    av_start_void (alist, word->cfunc.fn);
+    av_start_void (alist, word->func.fn);
 
-    cell_t *carg = arg;
+    cell_t *arg = ai.first;
 
     for (int i = 0; i < n; i++) {
-      if (islower(sig[i])) {
+      if (!isupper(sig[i])) {
         /* pass input arguments */
-        if (carg->type == CT_INT)
-          av_int(alist, carg->i);
-        else if (carg->type == CT_FLOAT)
-          av_float(alist, carg->f);
-        else if (carg->type == CT_MONO)
-          av_ptr(alist, tpm_mono_buf, carg->mono);
-        else if (carg->type == CT_COLOR)
-          av_ptr(alist, tpm_color_buf, carg->color);
+        if (arg->type == CT_INT)
+          av_int(alist, arg->i);
+        else if (arg->type == CT_FLOAT)
+          av_float(alist, arg->f);
+        else if (arg->type == CT_MONO)
+          av_ptr(alist, tpm_mono_buf, arg->mono);
+        else if (arg->type == CT_COLOR)
+          av_ptr(alist, tpm_color_buf, arg->color);
         else
           abort();
 
-        carg = CELL_NEXT(carg);
+        arg = CELL_NEXT(arg);
       } else {
         /* pass output arguments, but firstly push them on top of stack */
         char type = tolower(sig[i]);
@@ -261,7 +281,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
     av_call(alist);
 
     /* remove input arguments from stack */
-    for (size_t i = 0; i < args; i++) {
+    for (size_t i = 0; i < ai.args; i++) {
       cell_t *c = arg;
       arg = CELL_NEXT(arg);
       CELL_REMOVE(&interp->stack, c);
@@ -271,41 +291,32 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
     return TPMI_OK;
   }
 
-  return TPMI_ERROR;
+  abort();
 }
-
-typedef struct {
-  const char *id;
-  tpmi_fn_t fn;
-  size_t args;
-} builtin_ctor_t;
-
-static builtin_ctor_t builtins[] = {
-  { "depth", &do_depth, 0 },
-  { "drop", &do_drop, 1 },
-  { "dup", &do_dup, 1 },
-  { "swap", &do_swap, 2 },
-  { "over", &do_over, 2 },
-  { "roll", &do_roll, 1 },
-  { "pick", &do_pick, 1 },
-  { ".p", &do_print, 1 },
-  { ".s", &do_print_stack, 0 },
-  { ".w", &do_print_dict, 0 },
-  { "mono", &do_mono, 0 },
-  { "color", &do_color, 0 },
-  { NULL }
-};
 
 typedef struct {
   const char *id;
   void *fn;
   const char *sig;
-} cfunc_ctor_t;
+} func_ctor_t;
 
-void tpm_light(tpm_mono_buf dst, uint8_t type, float radius);
-void tpm_perlin_plasma(tpm_mono_buf dst, uint8_t step, uint32_t seed);
+static func_ctor_t builtins[] = {
+  { "depth", &do_depth, "" },
+  { "drop", &do_drop, "?" },
+  { "roll", &do_roll, "i" },
+  { "pick", &do_pick, "i" },
+  { "emit", &do_emit, "i" },
+  { "!", &do_store, "?a" },
+  { "@", &do_load, "a" },
+  { ".p", &do_print, "?" },
+  { ".s", &do_print_stack, "" },
+  { ".w", &do_print_dict, "" },
+  { "mono", &do_mono, "" },
+  { "color", &do_color, "" },
+  { NULL }
+};
 
-static cfunc_ctor_t cfuncs[] = {
+static func_ctor_t cfuncs[] = {
   { "explode", &tpm_explode, "MMMc" },
   { "implode", &tpm_implode, "Cmmm" },
   { "plasma", &tpm_plasma, "Miiff" },
@@ -319,12 +330,16 @@ static cfunc_ctor_t cfuncs[] = {
   { "mix-map", &tpm_mix_map, "Mmmm" },
   { "twist", &tpm_twist, "Mmf" },
   { "move", &tpm_move, "Mmii" },
-  { "uvmap", &tpm_uvmap, "Mmmff" },
+  { "uvmap", &tpm_uvmap, "Mmmmff" },
   { NULL }
 };
 
 static char *initprog[] = {
-  ": . .p drop ;",
+  ": _ .p drop ;",
+  ": dup 0 pick ;",
+  ": over 1 pick ;",
+  ": swap 1 roll ;",
+  ": rot 2 roll ;",
   ": tuck swap over ;",
   ": nip swap drop ;",
   NULL
@@ -336,19 +351,19 @@ tpmi_t *tpmi_new() {
   interp->words = dict_new();
 
   /* Initialize builtin words */
-  for (builtin_ctor_t *builtin = builtins; builtin->id; builtin++) {
+  for (func_ctor_t *builtin = builtins; builtin->id; builtin++) {
     word_t *word = dict_add(interp->words, builtin->id);
     word->type = WT_BUILTIN;
-    word->builtin.fn = (void *)builtin->fn;
-    word->builtin.args = builtin->args;
+    word->func.fn = (void *)builtin->fn;
+    word->func.sig = builtin->sig;
   }
 
   /* Initialize C function calls */
-  for (cfunc_ctor_t *cfunc = cfuncs; cfunc->id; cfunc++) {
+  for (func_ctor_t *cfunc = cfuncs; cfunc->id; cfunc++) {
     word_t *word = dict_add(interp->words, cfunc->id);
     word->type = WT_CFUNC;
-    word->cfunc.fn = cfunc->fn;
-    word->cfunc.sig = cfunc->sig;
+    word->func.fn = cfunc->fn;
+    word->func.sig = cfunc->sig;
   }
 
   /* Compile initial program */

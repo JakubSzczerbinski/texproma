@@ -67,16 +67,20 @@ void cell_delete(cell_t *c) {
 }
 
 void print_cell(cell_t *cell) {
-  if (cell->type == CT_INT)
-    printf("%d ", cell->i);
-  else if (cell->type == CT_FLOAT)
-    printf("%f ", cell->f);
-  else if (cell->type == CT_ATOM)
-    printf("%s ", cell->atom);
-  else if (cell->type == CT_MONO)
-    printf("<grayscale image at %p> ", cell->mono);
-  else if (cell->type == CT_COLOR)
-    printf("<color image at %p> ", cell->color);
-  else
-    printf("??? ");
+  if (cell != NULL) {
+    if (cell->type == CT_INT)
+      printf("%d ", cell->i);
+    else if (cell->type == CT_FLOAT)
+      printf("%f ", cell->f);
+    else if (cell->type == CT_ATOM)
+      printf("%s ", cell->atom);
+    else if (cell->type == CT_MONO)
+      printf("<grayscale image at %p> ", cell->mono);
+    else if (cell->type == CT_COLOR)
+      printf("<color image at %p> ", cell->color);
+    else
+      abort();
+  } else {
+    printf("null ");
+  }
 }

@@ -5,6 +5,7 @@
 #include "libtexproma.h"
 
 typedef enum { 
+  CT_ANY = '?',
   CT_INT = 'i',
   CT_FLOAT = 'f', 
   CT_ATOM = 'a',
