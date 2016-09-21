@@ -45,9 +45,10 @@ int main(int argc, char *argv[]) {
   puts("Copyright © 1999-2016 Krystian Bacławski");
   puts("Press CTRL+C to exit");
 
-  gui_init();
-
   interp = tpmi_new(); 
+
+  gui_init();
+  gui_update(interp);
 
   while (true) {
     const char *line;   /* read command line with the trailing '\n' */

@@ -46,6 +46,7 @@ cell_t *cell_dup(cell_t *c);
 void cell_swap(cell_t *c1, cell_t *c2);
 void cell_delete(cell_t *c);
 
-void print_cell(cell_t *cell);
+char *stringify_cell(cell_t *c);
+void print_cell(cell_t *c);
 
 #endif

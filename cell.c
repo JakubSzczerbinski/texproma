@@ -74,21 +74,27 @@ void cell_delete(cell_t *c) {
   free(c);
 }
 
-void print_cell(cell_t *cell) {
-  if (cell != NULL) {
-    if (cell->type == CT_INT)
-      printf("%d ", cell->i);
-    else if (cell->type == CT_FLOAT)
-      printf("%f ", cell->f);
-    else if (cell->type == CT_ATOM)
-      printf("%s ", cell->atom);
-    else if (cell->type == CT_MONO)
-      printf("<grayscale image at %p> ", cell->mono);
-    else if (cell->type == CT_COLOR)
-      printf("<color image at %p> ", cell->color);
-    else
-      abort();
-  } else {
-    printf("null ");
-  }
+char *stringify_cell(cell_t *c) {
+  char *str;
+  if (c == NULL)
+    str = strdup("null");
+  else if (c->type == CT_INT)
+    asprintf(&str, "%d", c->i);
+  else if (c->type == CT_FLOAT)
+    asprintf(&str, "%f", c->f);
+  else if (c->type == CT_ATOM)
+    str = strdup(c->atom);
+  else if (c->type == CT_MONO)
+    asprintf(&str, "mono image at %p", c->mono);
+  else if (c->type == CT_COLOR)
+    asprintf(&str, "color image at %p", c->color);
+  else
+    abort();
+  return str;
+}
+
+void print_cell(cell_t *c) {
+  char *str = stringify_cell(c);
+  printf("%s ", str);
+  free(str);
 }

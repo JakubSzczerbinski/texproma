@@ -12,7 +12,7 @@ env['BUILDERS']['ctags'] = \
 env.Append(CCFLAGS = '-g -O2 -Wall')
 env.Append(LINKFLAGS = '-g')
 
-env.ParseConfig('pkg-config --cflags --libs sdl2')
+env.ParseConfig('pkg-config --cflags --libs sdl2 SDL2_ttf')
 env.ParseConfig('pkg-config --cflags --libs libedit')
 
 env.Append(LIBS = ['texproma'])
@@ -25,9 +25,10 @@ env.Append(CPPPATH = ['libffcall/avcall'])
 
 SConscript('libtexproma/SConscript')
 
+ctag_sources = [Glob('*.[ch]'), Glob('libtexproma/*.[ch]')]
 sources = ['main.c', 'cell.c', 'dict.c', 'gui.c', 'interp.c']
 
-Alias('tags', env.ctags(source=[Glob('*.c'), Glob('*.h')], target='tags'))
+Alias('tags', env.ctags(source=ctag_sources, target='tags'))
 
 prog = env.Program(target='texproma', source=sources)
 Clean(prog, ['texproma.dSYM', Glob('*~')])

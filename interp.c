@@ -122,7 +122,7 @@ static tpmi_status_t do_print_stack(tpmi_t *interp) {
   size_t n = stack_depth(&interp->stack);
   cell_t *c;
   TAILQ_FOREACH(c, &interp->stack, list) {
-    printf("<%zu> ", --n);
+    printf("[%zu] ", --n);
     print_cell(c);
     putchar('\n');
   }
@@ -309,6 +309,8 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
     av_call(alist);
 
     /* remove input arguments from stack */
+    arg = ai.first;
+
     for (size_t i = 0; i < ai.args; i++) {
       cell_t *c = arg;
       arg = CELL_NEXT(arg);
@@ -348,7 +350,7 @@ static func_ctor_t builtins[] = {
 static func_ctor_t cfuncs[] = {
   { "explode", &tpm_explode, "MMMc" },
   { "implode", &tpm_implode, "Cmmm" },
-  { "plasma", &tpm_plasma, "Miiff" },
+  { "plasma", &tpm_plasma, "Mii" },
   { "light", &tpm_light, "Mif" },
   { "perlin-plasma", &tpm_perlin_plasma, "Mii" },
   { "add", &tpm_add, "Mmm" },
