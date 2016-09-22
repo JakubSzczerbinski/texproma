@@ -1,20 +1,26 @@
 #include "libtexproma_private.h"
 
+#define tpm_random_pixel(seed) (tpm_random(seed) & 255)
+
+void tpm_noise(tpm_mono_buf dst, unsigned seed) {
+  for (int y = 0; y < TP_HEIGHT; y++)
+    for (int x = 0; x < TP_WIDTH; x++)
+      tpm_put_pixel(dst, x, y, tpm_random_pixel(&seed));
+}
+
+
 void tpm_plasma(tpm_mono_buf dst, unsigned xsines, unsigned ysines) {
   xsines = constrain(xsines, 1, 100);
   ysines = constrain(ysines, 1, 100);
 
-  float dw = 1.0f / (float)TP_WIDTH;
-  float dh = 1.0f / (float)TP_HEIGHT;
+  const float dx = 2.0f * M_PI / TP_WIDTH;
+  const float dy = 2.0f * M_PI / TP_HEIGHT;
 
-  for (int y = 0; y < TP_WIDTH; y++) {
-    float yrad = (float)ysines * ((float)y * dh) * M_PI; 
-
+  for (int y = 0; y < TP_HEIGHT; y++) {
     for (int x = 0; x < TP_WIDTH; x++) {
-      float xrad = (float)xsines * ((float)x * dw) * M_PI;
-
-      int pixel = 0.5f * (sinf(xrad) + sinf(yrad)) * 127.0f + 127.0f;
-      tpm_put_pixel(dst, x, y, pixel);
+      float v = 0.5f * (sinf(ysines * y * dy) + sinf(xsines * x * dx));
+      tpm_put_pixel(dst, x, y, 
+                    constrain(lroundf((v + 1.0f) * 128.0f), 0, 255));
     }
   }
 }
@@ -26,9 +32,12 @@ void tpm_light(tpm_mono_buf dst, unsigned type, float radius) {
   float s = 3.0f - radius;
 
   for (int y = 0; y < TP_HEIGHT; y++) {
-    for (int x = 0; x < TP_WIDTH; x++) {
-      float r = sqrtf((float)((x - 128) * (x - 128) + (y - 128) * (y - 128))) * s;
+    int y2 = (y - TP_HEIGHT / 2) * (y - TP_HEIGHT / 2);
 
+    for (int x = 0; x < TP_WIDTH; x++) {
+      int x2 = (x - TP_WIDTH / 2) * (x - TP_WIDTH / 2);
+
+      float r = sqrtf(x2 + y2) * s;
       int v;
 
       if (type == 0) {
@@ -52,7 +61,7 @@ void tpm_light(tpm_mono_buf dst, unsigned type, float radius) {
 void tpm_perlin_plasma(tpm_mono_buf dst, unsigned step, unsigned seed) {
   for (int y = 0; y < TP_HEIGHT; y += step)
     for (int x = 0; x < TP_WIDTH; x += step)
-      tpm_put_pixel(dst, x, y, tpm_random(&seed));
+      tpm_put_pixel(dst, x, y, tpm_random(&seed) & 255);
 
   for (int x = 0; x < TP_HEIGHT; x += step) {
     for (int y = 0; y < TP_WIDTH; y += step) {
@@ -60,12 +69,11 @@ void tpm_perlin_plasma(tpm_mono_buf dst, unsigned step, unsigned seed) {
       float p2 = tpm_get_pixel(dst, x, y + step);
 
       float t1 = 0.5f * (p2 - (float)tpm_get_pixel(dst, x, y - step));
-      float t2 = 0.5f * ((float)tpm_get_pixel(dst, x, y + (step << 1)) - p1);
+      float t2 = 0.5f * ((float)tpm_get_pixel(dst, x, y + step * 2) - p1);
 
       float ds = 1.0f / (float)step;
-      float s;
 
-      int i;
+      int i; float s;
 
       for (i = 0, s = 0.0f; i < step; i++, s += ds)
         tpm_put_pixel(dst, x, y + i,
@@ -92,54 +100,31 @@ void tpm_perlin_plasma(tpm_mono_buf dst, unsigned step, unsigned seed) {
   }
 }
 
-#if 0
-void generate_perlin_noise(layer_t dst, uint16_t seed, uint16_t rseed)
-{
-  int st,ss,stm,x,y,pix,p1,p2,p3,p4;
+void tpm_perlin_noise(tpm_mono_buf dst, unsigned seed) {
+  tpm_put_pixel(dst, 0, 0, tpm_random(&seed) & 255);
+  tpm_put_pixel(dst, 128, 0, tpm_random(&seed) & 255);
+  tpm_put_pixel(dst, 0, 128, tpm_random(&seed) & 255);
+  tpm_put_pixel(dst, 128, 128, tpm_random(&seed) & 255);
 
-  Random(&seed,rseed);
-  PutPix(dst,0,0,seed);
-  Random(&seed,rseed);
-  PutPix(dst,128,0,seed);
-  Random(&seed,rseed);
-  PutPix(dst,0,128,seed);
-  Random(&seed,rseed);
-  PutPix(dst,128,128,seed);
+  for (unsigned n = 128; n > 1; n >>= 1) {
+    unsigned m = n >> 1;
 
-  for (st=128;st>1;st>>=1)
-  {
-    ss=st>>1;
-    stm=st-1;
-
-    for (y=0;y<256;y+=st)
-      for (x=0;x<256;x+=st)
-      {
-        p1=GetPix(dst,x,y);
-        p2=GetPix(dst,x+st,y);
-        p3=GetPix(dst,x,y+st);
-        p4=GetPix(dst,x+st,y+st);
-
-        Random(&seed,rseed);
-        pix=((p1+p2)>>1)+((seed&stm)-ss);
-        if (pix>255) pix=255;
-        if (pix<0) pix=0;
-        PutPix(dst,x+ss,y,pix);
-
-        Random(&seed,rseed);
-        pix=((p1+p3)>>1)+((seed&stm)-ss);
-        if (pix>255) pix=255;
-        if (pix<0) pix=0;
-        PutPix(dst,x,y+ss,pix);
-
-        Random(&seed,rseed);
-        pix=((p1+p2+p3+p4)>>2)+((seed&stm)-ss);
-        if (pix>255) pix=255;
-        if (pix<0) pix=0;
-        PutPix(dst,x+ss,y+ss,pix);
+    for (unsigned y = 0; y < 256; y += n) {
+      for (unsigned x = 0; x < 256; x += n) {
+        int p1 = tpm_get_pixel(dst, x, y);
+        int p2 = tpm_get_pixel(dst, x + n, y);
+        int p3 = tpm_get_pixel(dst, x, y + n);
+        int p4 = tpm_get_pixel(dst, x + n, y + n);
+        int r1 = (tpm_random(&seed) & (n - 1)) - m;
+        int r2 = (tpm_random(&seed) & (n - 1)) - m;
+        int r3 = (tpm_random(&seed) & (n - 1)) - m;
+        tpm_put_pixel(dst, x + m, y, ((p1 + p2) >> 1) + r1);
+        tpm_put_pixel(dst, x, y + m, ((p1 + p3) >> 1) + r2);
+        tpm_put_pixel(dst, x + m, y + m, ((p1 + p2 + p3 + p4) >> 2) + r3);
       }
+    }
   }
 }
-#endif
 
 #if 0
 void generate_cells(layer_t dst, uint8_t intens, uint8_t amount, uint16_t seed, uint16_t rseed)
@@ -184,29 +169,5 @@ void generate_cells(layer_t dst, uint8_t intens, uint8_t amount, uint16_t seed, 
   }
 
   for (i=0;i<0x10000;i++) dst[i]=~dst[i];
-}
-#endif
-
-#if 0
-void insert_bitmap(layer_t dst, uint8_t w, uint8_t h, uint8_t x, uint8_t y, uint8_t *data)
-{
-  uint8_t ppix,p;
-  int8_t  bpos;
-  int32_t j, xi, yi;
-
-  Clear(dst);
-
-  for (yi=0,j=0,bpos=-1,ppix=0;yi<=h;yi++) {
-    for (xi=0;xi<=w;xi++,bpos--)
-    {
-      if (bpos<0)
-      {
-        bpos=7;
-        ppix=data[j++];
-      }
-      p = (ppix&(1<<bpos)) ? 0xff : 0x00;
-      PutPix(dst,x+xi,y+yi,p);
-    }
-  }
 }
 #endif

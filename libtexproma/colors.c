@@ -35,7 +35,7 @@ void tpm_change_hsv(tpm_color_buf dst, tpm_color_buf src,
 void tpm_invert(tpm_mono_buf dst, tpm_mono_buf src) {
   for (int y = 0; y < TP_HEIGHT; y++)
     for (int x = 0; x < TP_WIDTH; x++)
-      tpm_put_pixel(dst, x, y, ~tpm_get_pixel(src, x, y));
+      tpm_put_pixel(dst, x, y, 255 - tpm_get_pixel(src, x, y));
 }
 
 void tpm_sine_color(tpm_mono_buf dst, tpm_mono_buf src, unsigned sine_cycles) {

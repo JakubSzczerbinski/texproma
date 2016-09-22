@@ -19,9 +19,11 @@ void tpm_implode(tpm_color_buf c,
                  tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b);
 
 /* generate ops */
+void tpm_noise(tpm_mono_buf dst, unsigned seed);
 void tpm_plasma(tpm_mono_buf dst, unsigned xsines, unsigned ysines);
 void tpm_light(tpm_mono_buf dst, unsigned type, float radius);
 void tpm_perlin_plasma(tpm_mono_buf dst, unsigned step, unsigned seed);
+void tpm_perlin_noise(tpm_mono_buf dst, unsigned seed);
 
 /* buffer ops */
 void tpm_set(tpm_mono_buf dst, int value);
@@ -36,7 +38,7 @@ void tpm_mix_map(tpm_mono_buf dst, tpm_mono_buf src1, tpm_mono_buf src2,
 
 /* distortion ops */
 void tpm_twist(tpm_mono_buf dst, tpm_mono_buf src, float strenght);
-void tpm_move(tpm_mono_buf dst, tpm_mono_buf src, int xoffset, int yoffset);
+void tpm_move(tpm_mono_buf dst, tpm_mono_buf src, float move_x, float move_y);
 void tpm_uvmap(tpm_mono_buf dst, tpm_mono_buf src,
                tpm_mono_buf umap, tpm_mono_buf vmap, 
                float ustrength, float vstrength);

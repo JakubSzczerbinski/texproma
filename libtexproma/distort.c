@@ -36,8 +36,8 @@ void tpm_distort_sine(uint8_t *pic, uint8_t xsines, uint8_t ysines, uint8_t
 }
 #endif
 
-void tpm_twist(tpm_mono_buf dst, tpm_mono_buf src, float strenght) {
-  float s = strenght * M_PI / 32.0f;
+void tpm_twist(tpm_mono_buf dst, tpm_mono_buf src, float strength) {
+  float s = constrain(strength, -1.0f, 1.0f) * 2.0f * M_PI / TP_WIDTH;
 
   for (int y = 0; y < TP_HEIGHT; y++) {
     for (int x = 0; x < TP_WIDTH; x++) {
@@ -64,11 +64,13 @@ void tpm_twist(tpm_mono_buf dst, tpm_mono_buf src, float strenght) {
   }
 }
 
-void tpm_move(tpm_mono_buf dst, tpm_mono_buf src, int xoffset, int yoffset) {
+void tpm_move(tpm_mono_buf dst, tpm_mono_buf src, float move_x, float move_y) {
+  int xo = constrain(move_x, -1.0f, 1.0f) * TP_WIDTH;
+  int yo = constrain(move_y, -1.0f, 1.0f) * TP_HEIGHT;
+
   for (int y = 0; y < TP_HEIGHT; y++)
     for (int x = 0; x < TP_WIDTH; x++)
-      tpm_put_pixel(dst, x, y, tpm_get_pixel(src, (x + xoffset) % TP_WIDTH,
-                                                  (y + yoffset) % TP_HEIGHT));
+      tpm_put_pixel(dst, x, y, tpm_get_pixel(src, x + xo, y + yo));
 }
 
 void tpm_uvmap(tpm_mono_buf dst, tpm_mono_buf src,
