@@ -1,62 +1,128 @@
-#include "libtxtproc_private.h"
+#include <stdlib.h>
 
-void Blur(uint8_t *pic,uint8_t amount)
+#include "libtexproma_private.h"
+
+static float _blur_3x3[] = {
+  0, 1, 0,
+  1, 1, 1,
+  0, 1, 0,
+};
+
+static float _blur_5x5[] = {
+  0, 0, 1, 0, 0,
+  0, 1, 1, 1, 0,
+  1, 1, 1, 1, 1,
+  0, 1, 1, 1, 0,
+  0, 0, 1, 0, 0,
+};
+
+static float _gaussian_3x3[] = {
+  1, 2, 1,
+  2, 4, 2,
+  1, 2, 1,
+};
+
+static float _gaussian_5x5[] = {
+  1,  4,  7,  4, 1,
+  4, 16, 26, 16, 4,
+  7, 26, 41, 26, 7,
+  4, 16, 26, 16, 4,
+  1,  4,  7,  4, 1,
+};
+
+static float _sharpen[] = {
+  -1, -1, -1,
+  -1,  9, -1,
+  -1, -1, -1,
+};
+
+static float _emboss[] = {
+  -1, -1,  0,
+  -1,  0,  1,
+   0,  1,  1,
+};
+
+static float _edges[] = {
+  -1, -1, -1,
+  -1,  8, -1,
+  -1, -1, -1,
+};
+
+static float _median_3x3[] = {
+  1, 1, 1,
+  1, 1, 1,
+  1, 1, 1,
+};
+
+static float _median_5x5[] = {
+  1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1,
+};
+
+static void filter(tpm_mono_buf dst, tpm_mono_buf src,
+                   float *filter, unsigned size, float factor, float bias)
 {
-  uint8_t bl,*dlr,*dlg,*dlb,*slr,*slg,*slb;
-  uint16_t x,y,r,g,b;
-  uint32_t  i;
+  float *tmp = calloc(1, TP_WIDTH * TP_HEIGHT * sizeof(float));
 
-  slr = layer[12];
-  slg = layer[13];
-  slb = layer[14];
+  for (int y = 0; y < TP_HEIGHT; y++)
+    for (int x = 0; x < TP_WIDTH; x++) {
+      float p = tpm_get_pixel(src, x, y);
 
-  dlr = pic;
-  dlg = pic + 0x10000;
-  dlb = pic + 0x20000;
-
-  for (bl = 0; bl < amount; bl++)
-  {
-    LayersCopy(slr,dlr);
-    LayersCopy(slg,dlg);
-    LayersCopy(slb,dlb);
-
-    for (y = 0, i = 0; y < 256; y++)
-    {
-      for (x = 0; x < 256; x++, i++)
-      {
-        r=GetPix(slr,x-1,y-1);
-        g=GetPix(slg,x-1,y-1);
-        b=GetPix(slb,x-1,y-1);
-        r+=GetPix(slr,x+1,y-1);
-        g+=GetPix(slg,x+1,y-1);
-        b+=GetPix(slb,x+1,y-1);
-        r+=GetPix(slr,x,y-1);
-        g+=GetPix(slg,x,y-1);
-        b+=GetPix(slb,x,y-1);
-        r+=GetPix(slr,x-1,y);
-        g+=GetPix(slg,x-1,y);
-        b+=GetPix(slb,x-1,y);
-        r+=GetPix(slr,x+1,y);
-        g+=GetPix(slg,x+1,y);
-        b+=GetPix(slb,x+1,y);
-        r+=GetPix(slr,x-1,y+1);
-        g+=GetPix(slg,x-1,y+1);
-        b+=GetPix(slb,x-1,y+1);
-        r+=GetPix(slr,x+1,y+1);
-        g+=GetPix(slg,x+1,y+1);
-        b+=GetPix(slb,x+1,y+1);
-        r+=GetPix(slr,x,y+1);
-        g+=GetPix(slg,x,y+1);
-        b+=GetPix(slb,x,y+1);
-
-        dlr[i]=(r>>3);
-        dlg[i]=(g>>3);
-        dlb[i]=(b>>3);
-      }
+      for (int j = 0; j < size; j++)
+        for (int i = 0; i < size; i++) {
+          int k = (x + i - (size >> 1)) & (TP_WIDTH - 1);
+          int l = (y + j - (size >> 1)) & (TP_HEIGHT - 1);
+          tmp[k + TP_WIDTH * l] += filter[j * size + i] * p;
+        }
     }
-  }
+
+  for (int y = 0; y < TP_HEIGHT; y++)
+    for (int x = 0; x < TP_WIDTH; x++)
+      tpm_put_pixel(dst, x, y, tmp[x + TP_WIDTH * y] * factor + bias);
+
+  free(tmp);
 }
 
+void tpm_blur_3x3(tpm_mono_buf dst, tpm_mono_buf src) {
+  filter(dst, src, _blur_3x3, 3, 1.0f / 5.0f, 0.0f);
+}
+
+void tpm_blur_5x5(tpm_mono_buf dst, tpm_mono_buf src) {
+  filter(dst, src, _blur_5x5, 5, 1.0f / 11.0f, 0.0f);
+}
+
+void tpm_gaussian_3x3(tpm_mono_buf dst, tpm_mono_buf src) {
+  filter(dst, src, _gaussian_3x3, 3, 1.0f / 16.0f, 0.0f);
+}
+
+void tpm_gaussian_5x5(tpm_mono_buf dst, tpm_mono_buf src) {
+  filter(dst, src, _gaussian_5x5, 5, 1.0f / 273.0f, 0.0f);
+}
+
+void tpm_sharpen(tpm_mono_buf dst, tpm_mono_buf src) {
+  filter(dst, src, _sharpen, 3, 1.0f, 0.0f);
+}
+
+void tpm_emboss(tpm_mono_buf dst, tpm_mono_buf src) {
+  filter(dst, src, _emboss, 3, 1.0f, 128.0f);
+}
+
+void tpm_edges(tpm_mono_buf dst, tpm_mono_buf src) {
+  filter(dst, src, _edges, 3, 1.0f, 0.0f);
+}
+
+void tpm_median_3x3(tpm_mono_buf dst, tpm_mono_buf src) {
+  filter(dst, src, _median_3x3, 3, 1.0f / 9.0f, 0.0f);
+}
+
+void tpm_median_5x5(tpm_mono_buf dst, tpm_mono_buf src) {
+  filter(dst, src, _median_5x5, 5, 1.0f / 25.0f, 0.0f);
+}
+
+#if 0
 void DirectionalBlur(uint8_t *pic,uint8_t *datalayer,uint8_t Distance)
 {
   uint8_t *dlr,*dlg,*dlb,*slr,*slg,*slb;
@@ -114,48 +180,4 @@ void DirectionalBlur(uint8_t *pic,uint8_t *datalayer,uint8_t Distance)
 
   CopyTempLayer(pic);
 }
-
-void Emboss(uint8_t *pic)
-{
-  uint8_t *dlr,*dlg,*dlb,*slr,*slg,*slb;
-  uint16_t x,y;
-  uint16_t pr,pg,pb,lr,lg,lb;
-  int16_t  r,g,b;
-  uint32_t i;
-
-  slr=pic;
-  slg=pic+0x10000;
-  slb=pic+0x20000;
-
-  dlr=layer[12];
-  dlg=layer[13];
-  dlb=layer[14];
-
-  for (y=0,i=0;y<256;y++)
-    for (x=0;x<256;x++,i++)
-    {
-      lr=GetPix(slr,x-1,y-1)+GetPix(slr,x-1,y)+GetPix(slr,x-1,y+1);
-      lg=GetPix(slg,x-1,y-1)+GetPix(slg,x-1,y)+GetPix(slg,x-1,y+1);
-      lb=GetPix(slb,x-1,y-1)+GetPix(slb,x-1,y)+GetPix(slb,x-1,y+1);
-      pr=GetPix(slr,x+1,y-1)+GetPix(slr,x+1,y)+GetPix(slr,x+1,y+1);
-      pg=GetPix(slg,x+1,y-1)+GetPix(slg,x+1,y)+GetPix(slg,x+1,y+1);
-      pb=GetPix(slb,x+1,y-1)+GetPix(slb,x+1,y)+GetPix(slb,x+1,y+1);
-
-      r=(((pr-lr)*256/3)>>8)+127;
-      g=(((pg-lg)*256/3)>>8)+127;
-      b=(((pb-lb)*256/3)>>8)+127;
-
-      if (r>255) r=255;
-      if (g>255) g=255;
-      if (b>255) b=255;
-      if (r<0) r=0;
-      if (g<0) g=0;
-      if (b<0) b=0;
-
-      dlr[i]=r;
-      dlg[i]=g;
-      dlb[i]=b;
-    }
-
-  CopyTempLayer(pic);
-}
+#endif

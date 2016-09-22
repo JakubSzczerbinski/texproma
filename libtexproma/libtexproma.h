@@ -51,4 +51,15 @@ void tpm_contrast(tpm_mono_buf dst, tpm_mono_buf src, float contrast);
 void tpm_colorize(tpm_color_buf dst, tpm_mono_buf src, color_t c1, color_t c2);
 void tpm_grayscale(tpm_mono_buf dst, tpm_color_buf src);
 
+/* filter ops */
+void tpm_blur_3x3(tpm_mono_buf dst, tpm_mono_buf src);
+void tpm_blur_5x5(tpm_mono_buf dst, tpm_mono_buf src);
+void tpm_gaussian_3x3(tpm_mono_buf dst, tpm_mono_buf src);
+void tpm_gaussian_5x5(tpm_mono_buf dst, tpm_mono_buf src);
+void tpm_sharpen(tpm_mono_buf dst, tpm_mono_buf src);
+void tpm_emboss(tpm_mono_buf dst, tpm_mono_buf src);
+void tpm_edges(tpm_mono_buf dst, tpm_mono_buf src);
+void tpm_median_3x3(tpm_mono_buf dst, tpm_mono_buf src);
+void tpm_median_5x5(tpm_mono_buf dst, tpm_mono_buf src);
+
 #endif

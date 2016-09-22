@@ -370,6 +370,15 @@ static func_ctor_t cfuncs[] = {
   { "contrast", &tpm_contrast, "Mmf" },
   { "colorize", &tpm_colorize, "Cmii" },
   { "grayscale", &tpm_grayscale, "Mc" },
+  { "blur-3x3", &tpm_blur_3x3, "Mm" },
+  { "blur-5x5", &tpm_blur_5x5, "Mm" },
+  { "gaussian-3x3", &tpm_gaussian_3x3, "Mm" },
+  { "gaussian-5x5", &tpm_gaussian_5x5, "Mm" },
+  { "sharpen", &tpm_sharpen, "Mm" },
+  { "emboss", &tpm_emboss, "Mm" },
+  { "edges", &tpm_edges, "Mm" },
+  { "median-3x3", &tpm_median_3x3, "Mm" },
+  { "median-5x5", &tpm_median_5x5, "Mm" },
   { NULL }
 };
 
