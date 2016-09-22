@@ -432,7 +432,8 @@ static bool read_float(const char *str, float *f) {
 
 static bool read_int(const char *str, int *i) {
   char *end;
-  *i = strtol(str, &end, 10);
+  bool hex = (str[0] == '0' && tolower(str[1]) == 'x');
+  *i = strtol(hex ? str + 2 : str, &end, hex ? 16 : 10);
   return *end == '\0';
 }
 

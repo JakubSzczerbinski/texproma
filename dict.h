@@ -27,6 +27,7 @@ dict_t *dict_new();
 void dict_delete(dict_t *);
 word_t *dict_find(dict_t *, const char *);
 word_t *dict_add(dict_t *, const char *);
+bool dict_match(dict_t *, word_t **, const char *);
 
 void print_dict(dict_t *);
 

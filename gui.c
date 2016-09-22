@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <signal.h>
 #include <SDL.h>
 #include <SDL_ttf.h>
 
@@ -36,11 +35,7 @@ static void RenderText(SDL_Renderer *renderer, TTF_Font *font,
 }
 
 void gui_init() {
-  /* Workaround for libedit SIGINT handler */
-  struct sigaction action;
-  sigaction(SIGINT, NULL, &action);
-
-  if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_NOPARACHUTE) < 0) {
+  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
     exit(EXIT_FAILURE);
   }
@@ -53,8 +48,6 @@ void gui_init() {
   }
 
   atexit(TTF_Quit);
-
-  sigaction(SIGINT, &action, NULL);
 
   /* Open Inconsolata font */
   if (!(font16 = TTF_OpenFont("data/Inconsolata.otf", 15))) {

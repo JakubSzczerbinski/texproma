@@ -217,3 +217,25 @@ void print_dict(dict_t *dict) {
   print_words(dict, WT_BUILTIN);
   print_words(dict, WT_CFUNC);
 }
+
+bool dict_match(dict_t *dict, word_t **matchp, const char *prefix) {
+  word_t *match = *matchp;
+  word_t *end = &dict->entries[dict->index_mask];
+  size_t n = strlen(prefix);
+
+  if (match == NULL)
+    match = dict->entries;
+  else
+    match++;
+
+  for (; match <= end; match++) {
+    if (match->key == NULL)
+      continue;
+    if (strncmp(prefix, match->key, n) != 0)
+      continue;
+    *matchp = match;
+    return true;
+  }
+
+  return false;
+}

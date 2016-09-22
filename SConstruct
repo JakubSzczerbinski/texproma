@@ -13,11 +13,10 @@ env.Append(CCFLAGS = '-g -O2 -Wall')
 env.Append(LINKFLAGS = '-g')
 
 env.ParseConfig('pkg-config --cflags --libs sdl2 SDL2_ttf')
-env.ParseConfig('pkg-config --cflags --libs libedit')
 
 env.Append(LIBS = ['texproma'])
 env.Append(LIBPATH = ['libtexproma'])
-env.Append(CPPPATH = ['libtexproma'])
+env.Append(CPPPATH = ['libtexproma', 'linenoise'])
 
 env.Append(LIBS = ['avcall'])
 env.Append(LIBPATH = ['libffcall/avcall/.libs'])
@@ -26,7 +25,8 @@ env.Append(CPPPATH = ['libffcall/avcall'])
 SConscript('libtexproma/SConscript')
 
 ctag_sources = [Glob('*.[ch]'), Glob('libtexproma/*.[ch]')]
-sources = ['main.c', 'cell.c', 'dict.c', 'gui.c', 'interp.c']
+sources = ['main.c', 'cell.c', 'dict.c', 'gui.c', 'interp.c',
+           'linenoise/linenoise.c']
 
 Alias('tags', env.ctags(source=ctag_sources, target='tags'))
 
