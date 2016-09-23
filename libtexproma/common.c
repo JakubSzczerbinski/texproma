@@ -62,23 +62,21 @@ void tp_reg_put_rgb_pixelf(uint8_t num, int16_t x, int16_t y, colorf_t *c)
 }
 #endif
 
-int tpm_get_filtered_pixel(tpm_mono_buf buf, float x, float y)
-{
-  float fx = floorf(x), fy = floorf(y);
-  int xi = fx, yi = fy;
+/* https://en.wikipedia.org/wiki/Bilinear_filtering */
+int tpm_get_filtered_pixel(tpm_mono_buf buf, float x, float y) {
+  float u = floorf(x), v = floorf(y);
+  int xi = u, yi = v;
+
+  u = x - u;
+  v = y - v;
 
   float p1 = tpm_get_pixel(buf, xi    , yi    );
   float p2 = tpm_get_pixel(buf, xi + 1, yi    );
   float p3 = tpm_get_pixel(buf, xi    , yi + 1);
   float p4 = tpm_get_pixel(buf, xi + 1, yi + 1);
 
-  fx = x - fx;
-  fy = y - fy;
-
-  p3 = (p3 - p1) * fy + p1;
-  p4 = (p4 - p2) * fy + p2;
-
-  return (p4 - p3) * fx + p3;
+  return ((p1 * (1.0f - u) + p2 * u) * (1.0f - v) +
+          (p3 * (1.0f - u) + p4 * u) * v);
 }
 
 uint32_t tpm_random(uint32_t *seed) {

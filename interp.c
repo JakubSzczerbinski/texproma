@@ -350,10 +350,9 @@ static func_ctor_t builtins[] = {
 static func_ctor_t cfuncs[] = {
   { "explode", &tpm_explode, "MMMc" },
   { "implode", &tpm_implode, "Cmmm" },
-  { "noise", &tpm_noise, "Mi" },
+  { "noise", &tpm_noise, "Mii" },
   { "plasma", &tpm_plasma, "Mii" },
   { "light", &tpm_light, "Mif" },
-  { "perlin-plasma", &tpm_perlin_plasma, "Mii" },
   { "perlin-noise", &tpm_perlin_noise, "Mi" },
   { "add", &tpm_add, "Mmm" },
   { "mul", &tpm_mul, "Mmm" },

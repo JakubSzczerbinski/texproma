@@ -19,10 +19,9 @@ void tpm_implode(tpm_color_buf c,
                  tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b);
 
 /* generate ops */
-void tpm_noise(tpm_mono_buf dst, unsigned seed);
+void tpm_noise(tpm_mono_buf dst, unsigned step, unsigned seed);
 void tpm_plasma(tpm_mono_buf dst, unsigned xsines, unsigned ysines);
 void tpm_light(tpm_mono_buf dst, unsigned type, float radius);
-void tpm_perlin_plasma(tpm_mono_buf dst, unsigned step, unsigned seed);
 void tpm_perlin_noise(tpm_mono_buf dst, unsigned seed);
 
 /* buffer ops */

@@ -30,13 +30,18 @@ float tpm_bezier_interpolate(float s1, float p1, float p2, float t1, float t2);
 void tpm_rgb_to_hsv(float r, float g, float b, float *h, float *s, float *v);
 void tpm_hsv_to_rgb(float *r, float *g, float *b, float h, float s, float v);
 
-#define constrain(x, min, max) ({       \
-  typeof(x) _x = x;                     \
-  typeof(x) _min = min;                 \
-  typeof(x) _max = max;                 \
-  if (_x < _min) _x = _min;             \
-  else if (x > max) _x = _max;          \
-  _x;                                   \
+#define constrain(x, min, max) ({               \
+    typeof(x) _x = x;                           \
+    typeof(x) _min = min;                       \
+    typeof(x) _max = max;                       \
+    if (_x < _min) _x = _min;                   \
+    else if (x > max) _x = _max;                \
+    _x;                                         \
+  })
+
+#define lerp(x0, x1, s) ({                      \
+    float _x0 = x0, _x1 = x1;                   \
+    (typeof(x0))(_x0 * (1.0f - s) + _x1 * s);   \
   })
 
 #endif

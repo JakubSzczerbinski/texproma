@@ -1,14 +1,5 @@
 #include "libtexproma_private.h"
 
-#define tpm_random_pixel(seed) (tpm_random(seed) & 255)
-
-void tpm_noise(tpm_mono_buf dst, unsigned seed) {
-  for (int y = 0; y < TP_HEIGHT; y++)
-    for (int x = 0; x < TP_WIDTH; x++)
-      tpm_put_pixel(dst, x, y, tpm_random_pixel(&seed));
-}
-
-
 void tpm_plasma(tpm_mono_buf dst, unsigned xsines, unsigned ysines) {
   xsines = constrain(xsines, 1, 100);
   ysines = constrain(ysines, 1, 100);
@@ -58,44 +49,54 @@ void tpm_light(tpm_mono_buf dst, unsigned type, float radius) {
   }
 }
 
-void tpm_perlin_plasma(tpm_mono_buf dst, unsigned step, unsigned seed) {
-  for (int y = 0; y < TP_HEIGHT; y += step)
-    for (int x = 0; x < TP_WIDTH; x += step)
+void tpm_noise(tpm_mono_buf dst, unsigned step, unsigned seed) {
+  step = constrain(step, 0, 7);
+
+  const unsigned n = 1 << step;
+  const float ds = 1.0f / n;
+  
+  for (int y = 0; y < TP_HEIGHT; y += n)
+    for (int x = 0; x < TP_WIDTH; x += n)
       tpm_put_pixel(dst, x, y, tpm_random(&seed) & 255);
 
-  for (int x = 0; x < TP_HEIGHT; x += step) {
-    for (int y = 0; y < TP_WIDTH; y += step) {
+  if (step == 0)
+    return;
+
+  /* interpolate columns */
+  for (int x = 0; x < TP_HEIGHT; x += n) {
+    for (int y = 0; y < TP_WIDTH; y += n) {
+      /* point values */
+      float p0 = tpm_get_pixel(dst, x, y - n);
       float p1 = tpm_get_pixel(dst, x, y);
-      float p2 = tpm_get_pixel(dst, x, y + step);
+      float p2 = tpm_get_pixel(dst, x, y + n);
+      float p3 = tpm_get_pixel(dst, x, y + n * 2);
 
-      float t1 = 0.5f * (p2 - (float)tpm_get_pixel(dst, x, y - step));
-      float t2 = 0.5f * ((float)tpm_get_pixel(dst, x, y + step * 2) - p1);
+      /* Catmull-Rom tangents */
+      float t1 = 0.5f * (p0 + p1);
+      float t2 = 0.5f * (p1 + p3);
 
-      float ds = 1.0f / (float)step;
-
-      int i; float s;
-
-      for (i = 0, s = 0.0f; i < step; i++, s += ds)
+      for (int i = 0; i < n; i++)
         tpm_put_pixel(dst, x, y + i,
-                      (int)tpm_bezier_interpolate(s, p1, p2, t1, t2));
+                      tpm_bezier_interpolate(i * ds, p1, p2, t1, t2));
     }
   }
 
-  for (int y = 0; y < TP_HEIGHT; y++) {
-    for (int x = 0; x < TP_WIDTH; x += step) {
+  /* interpolate rows */
+  for (int y = 0; y < TP_WIDTH; y++) {
+    for (int x = 0; x < TP_HEIGHT; x += n) {
+      /* point values */
+      float p0 = tpm_get_pixel(dst, x - n, y);
       float p1 = tpm_get_pixel(dst, x, y);
-      float p2 = tpm_get_pixel(dst, x + step, y);
+      float p2 = tpm_get_pixel(dst, x + n, y);
+      float p3 = tpm_get_pixel(dst, x + 2 * n, y);
 
-      float t1 = 0.5f * (p2 - (float)tpm_get_pixel(dst, x - step, y));
-      float t2 = 0.5f * ((float)tpm_get_pixel(dst, x + (step << 1), y) - p1);
+      /* Catmull-Rom tangents */
+      float t1 = 0.5f * (p0 + p1);
+      float t2 = 0.5f * (p1 + p3);
 
-      float ds = 1.0f / (float)step;
-
-      float s; int i;
-
-      for (i = 0, s = 0.0f; i < step; i++, s += ds)
-        tpm_put_pixel(dst, x + i, y, 
-                      (int)tpm_bezier_interpolate(s, p1, p2, t1, t2));
+      for (int i = 0; i < n; i++)
+        tpm_put_pixel(dst, x + i, y,
+                      tpm_bezier_interpolate(i * ds, p1, p2, t1, t2));
     }
   }
 }
