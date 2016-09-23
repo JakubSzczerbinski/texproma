@@ -84,10 +84,9 @@ int main(int argc, char *argv[]) {
           free(histline);
           histline = NULL;
         }
-
-        if (status == TPMI_OK)
-          gui_update(interp);
       }
+
+      gui_update(interp);
     }
 
     free(line);

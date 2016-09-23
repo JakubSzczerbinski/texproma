@@ -274,6 +274,8 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
           av_int(alist, arg->i);
         else if (arg->type == CT_FLOAT)
           av_float(alist, arg->f);
+        else if (arg->type == CT_STRING)
+          av_ptr(alist, uint8_t *, arg->str);
         else if (arg->type == CT_MONO)
           av_ptr(alist, tpm_mono_buf, arg->mono);
         else if (arg->type == CT_COLOR)
@@ -434,58 +436,75 @@ void tpmi_delete(tpmi_t *interp) {
   free(interp);
 }
 
-static bool read_float(const char *str, float *f) {
+static bool read_float(const char *str, size_t span, float *f) {
   char *end;
   *f = strtof(str, &end);
-  return *end == '\0';
+  return end == str + span;
 }
 
-static bool read_int(const char *str, int *i) {
+static bool read_int(const char *str, size_t span, int *i) {
   char *end;
   bool hex = (str[0] == '0' && tolower(str[1]) == 'x');
   *i = strtol(hex ? str + 2 : str, &end, hex ? 16 : 10);
-  return *end == '\0';
+  return end == str + span;
 }
 
-static cell_t make_cell(const char *token) {
+static cell_t make_cell(const char *line, size_t span) {
   int i; float f;
 
-  if (read_int(token, &i))
+  if (read_int(line, span, &i))
     return (cell_t){CT_INT, {.i = i}};
-  else if (read_float(token, &f))
+  if (read_float(line, span, &f))
     return (cell_t){CT_FLOAT, {.f = f}};
-  else
-    return (cell_t){CT_ATOM, {.atom = token}};
+  if (line[0] == '"' && line[span - 1] == '"')
+    return (cell_t){CT_STRING, {.str = strndup(line + 1, span - 2)}};
+  return (cell_t){CT_ATOM, {.atom = strndup(line, span)}};
 }
 
 tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
-  const char *token;
-  char *state, *orig_state;
-  size_t n = 0;
-  cell_t c;
   tpmi_status_t status = TPMI_OK;
+  size_t n = 0;
 
-  state = orig_state = strdup(line);
+  while (true) {
+    /* skip spaces */
+    line += strspn(line, " \t\n");
 
-  while ((token = strsep(&state, " \n")) != NULL) {
-    if (strlen(token) == 0)
-      continue;
+    /* find token */
+    size_t len;
 
-    c = make_cell(token);
+    if (*line == '"') {
+      char *closing = strchr(line + 1, '"');
+
+      if (closing == NULL) {
+        ERROR(interp, "missing closing quote character");
+        status = TPMI_ERROR;
+        goto error;
+      }
+
+      len = closing + 1 - line;
+    } else {
+      len = strcspn(line, " \t\n");
+    }
+
+    if (len == 0)
+      break;
+
+    /* parse token */
+    cell_t c = make_cell(line, len);
 
     switch (*interp->mode) {
       case TPMI_EVAL: 
         /* evaluation mode */
         status = TPMI_NEED_MORE;
 
-        if (strcmp(token, ":") == 0) {
+        if (strncmp(line, ":", len) == 0) {
           *interp->mode = TPMI_COMPILE;
           interp->curr_word = NULL;
-        } else if (strcmp(token, "'") == 0)
+        } else if (strncmp(line, "'", len) == 0)
           *interp->mode = TPMI_FUNCREF;
-        else if (strcasecmp(token, "variable") == 0)
+        else if (strncasecmp(line, "variable", len) == 0)
           *interp->mode = TPMI_DEFVAR;
-        else if (strcasecmp(token, "immediate") == 0) {
+        else if (strncasecmp(line, "immediate", len) == 0) {
           if (interp->curr_word != NULL)
             interp->curr_word->immediate = true;
           status = TPMI_OK;
@@ -496,15 +515,12 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
       case TPMI_COMPILE:
         /* compilation mode */
 
-        if (strcmp(token, ";") == 0) {
+        if (strncmp(line, ";", len) == 0) {
           *interp->mode = TPMI_EVAL;
           status = TPMI_OK;
-          continue;
-        }
-
-        if (interp->curr_word == NULL) {
+        } else if (interp->curr_word == NULL) {
           if (c.type == CT_ATOM) {
-            word_t *word = dict_add(interp->words, token); 
+            word_t *word = dict_add(interp->words, c.atom); 
 
             if (word->type == WT_NULL) {
               word->type = WT_DEF;
@@ -513,7 +529,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
               interp->curr_word = word;
               status = TPMI_NEED_MORE;
             } else {
-              ERROR(interp, "word '%s' has been already defined", token);
+              ERROR(interp, "word '%s' has been already defined", c.atom);
               status = TPMI_ERROR;
             }
           } else {
@@ -521,7 +537,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
             status = TPMI_ERROR;
           }
         } else {
-          if (c.type == CT_ATOM && dict_add(interp->words, token)->immediate) {
+          if (c.type == CT_ATOM && dict_add(interp->words, c.atom)->immediate) {
             status = eval_cell(interp, &c);
           } else {
             STACK_PUSH(&interp->curr_word->def, cell_dup(&c));
@@ -534,7 +550,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
         *interp->mode = TPMI_EVAL;
 
         if (c.type == CT_ATOM) {
-          dict_add(interp->words, token)->type = WT_VAR;
+          dict_add(interp->words, c.atom)->type = WT_VAR;
           status = TPMI_OK;
         } else {
           ERROR(interp, "'variable' expects name");
@@ -547,7 +563,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
         status = TPMI_ERROR;
 
         if (c.type == CT_ATOM)
-          if (dict_add(interp->words, token)->type == WT_CFUNC) {
+          if (dict_add(interp->words, c.atom)->type == WT_CFUNC) {
             STACK_PUSH(&interp->stack, cell_dup(&c));
             status = TPMI_OK;
           }
@@ -557,14 +573,16 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
         break;
     }
 
+    line += len;
+
+error:
+
     if (status == TPMI_ERROR) {
       fprintf(stderr, RED "failure at token %zu\n" RESET, n + 1);
       fprintf(stderr, RED "error: " RESET "%s\n", interp->errmsg);
       break;
     }
   }
-
-  free(orig_state);
 
   return status;
 }

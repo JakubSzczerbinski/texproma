@@ -9,6 +9,7 @@ typedef enum {
   CT_INT = 'i',
   CT_FLOAT = 'f', 
   CT_ATOM = 'a',
+  CT_STRING = 's',
   CT_MONO = 'm', 
   CT_COLOR = 'c'
 } cell_type_t;
@@ -19,6 +20,7 @@ typedef struct cell {
     int i;
     float f;
     const char *atom;
+    const char *str;
     tpm_mono_buf mono;
     tpm_color_buf color;
   };
@@ -39,6 +41,7 @@ typedef TAILQ_HEAD(cell_list, cell) cell_list_t;
 cell_t *cell_int(int i);
 cell_t *cell_float(float f);
 cell_t *cell_atom(const char *atom);
+cell_t *cell_string(const char *str);
 cell_t *cell_mono();
 cell_t *cell_color();
 

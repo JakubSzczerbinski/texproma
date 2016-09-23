@@ -26,6 +26,13 @@ cell_t *cell_atom(const char *atom) {
   return c;
 }
 
+cell_t *cell_string(const char *str) {
+  cell_t *c = calloc(1, sizeof(cell_t));
+  c->type = CT_STRING;
+  c->str = strdup(str);
+  return c;
+}
+
 cell_t *cell_mono() {
   cell_t *c = calloc(1, sizeof(cell_t));
   c->type = CT_MONO;
@@ -45,6 +52,8 @@ cell_t *cell_dup(cell_t *c) {
   memcpy(nc, c, sizeof(cell_t));
   if (nc->type == CT_ATOM) {
     nc->atom = strdup(c->atom);
+  } else if (nc->type == CT_STRING) {
+    nc->atom = strdup(c->str);
   } else if (nc->type == CT_MONO) {
     nc->mono = malloc(TP_WIDTH * TP_HEIGHT);
     memcpy(nc->mono, c->mono, TP_WIDTH * TP_HEIGHT);
@@ -67,6 +76,8 @@ void cell_swap(cell_t *c1, cell_t *c2) {
 void cell_delete(cell_t *c) {
   if (c->type == CT_ATOM)
     free((void *)c->atom);
+  else if (c->type == CT_STRING)
+    free((void *)c->str);
   else if (c->type == CT_MONO)
     free(c->mono);
   else if (c->type == CT_COLOR)
@@ -84,6 +95,8 @@ char *stringify_cell(cell_t *c) {
     asprintf(&str, "%f", c->f);
   else if (c->type == CT_ATOM)
     str = strdup(c->atom);
+  else if (c->type == CT_STRING)
+    asprintf(&str, "\"%s\"", c->str);
   else if (c->type == CT_MONO)
     asprintf(&str, "mono image at %p", c->mono);
   else if (c->type == CT_COLOR)

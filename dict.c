@@ -207,7 +207,7 @@ static void print_words(dict_t *dict, word_type_t type) {
       abort();
     }
 
-    printf(RED "%s\n" RESET, word->immediate ? " immediate" : "");
+    printf(RED "%s" RESET "\n", word->immediate ? " immediate" : "");
   }
 }
 
