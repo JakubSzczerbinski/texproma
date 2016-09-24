@@ -32,6 +32,7 @@
 #include <stdio.h>
 
 #include "ansi.h"
+#include "config.h"
 #include "dict.h"
 
 struct dict {
@@ -58,7 +59,7 @@ dict_t *dict_new() {
    * Pick a random initialization for the FNV-1a hashing. This makes it
    * hard to come up with a fixed set of keys to force hash collisions.
    */
-  arc4random_buf(&hsearch->offset_basis, sizeof(hsearch->offset_basis));
+  hsearch->offset_basis = random();
   hsearch->index_mask = 0xf;
   hsearch->entries_used = 0;
   return hsearch;

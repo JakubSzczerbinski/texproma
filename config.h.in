@@ -1,0 +1,7 @@
+#ifndef HAVE_STRNDUP
+char *strndup(const char *s1, size_t n);
+#endif
+
+#ifndef HAVE_RANDOM
+long random(void);
+#endif

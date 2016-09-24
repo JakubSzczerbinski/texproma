@@ -86,24 +86,24 @@ void cell_delete(cell_t *c) {
 }
 
 char *stringify_cell(cell_t *c) {
-  char *str;
+  char str[80];
   if (c == NULL)
-    str = strdup("null");
+    strncpy(str, "null", sizeof(str));
   else if (c->type == CT_INT)
-    asprintf(&str, "%d", c->i);
+    snprintf(str, sizeof(str), "%d", c->i);
   else if (c->type == CT_FLOAT)
-    asprintf(&str, "%f", c->f);
+    snprintf(str, sizeof(str), "%f", c->f);
   else if (c->type == CT_ATOM)
-    str = strdup(c->atom);
+    strncpy(str, c->atom, sizeof(str));
   else if (c->type == CT_STRING)
-    asprintf(&str, "\"%s\"", c->str);
+    snprintf(str, sizeof(str), "\"%s\"", c->str);
   else if (c->type == CT_MONO)
-    asprintf(&str, "mono image at %p", c->mono);
+    snprintf(str, sizeof(str), "mono image at %p", c->mono);
   else if (c->type == CT_COLOR)
-    asprintf(&str, "color image at %p", c->color);
+    snprintf(str, sizeof(str), "color image at %p", c->color);
   else
     abort();
-  return str;
+  return strdup(str);
 }
 
 void print_cell(cell_t *c) {

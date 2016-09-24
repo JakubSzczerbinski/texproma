@@ -11,5 +11,8 @@ cscope.out
 tags
 *.taghl
 
+config.h
+config.log
+
 texproma
 texproma.dSYM

@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <ffi.h>
 
+#include "config.h"
 #include "interp.h"
 #include "ansi.h"
 
@@ -26,9 +27,9 @@
     TAILQ_INSERT_TAIL((stack), tmp, list);                              \
   })
 
-static size_t stack_depth(cell_list_t *stack) {
+static unsigned stack_depth(cell_list_t *stack) {
   cell_t *c;
-  size_t n = 0;
+  unsigned n = 0;
   TAILQ_FOREACH(c, stack, list) n++;
   return n;
 }
@@ -53,7 +54,7 @@ static tpmi_status_t do_roll(tpmi_t *interp) {
     return TPMI_ERROR;
   }
   
-  size_t n = top->i;
+  unsigned n = top->i;
   cell_t *arg = CELL_PREV(top);
 
   while (arg && (n-- > 0))
@@ -81,7 +82,7 @@ static tpmi_status_t do_pick(tpmi_t *interp) {
     return TPMI_ERROR;
   }
   
-  size_t n = top->i;
+  unsigned n = top->i;
   cell_t *arg = CELL_PREV(top);
 
   while (arg && (n-- > 0))
@@ -118,10 +119,10 @@ static tpmi_status_t do_emit(tpmi_t *interp) {
 }
 
 static tpmi_status_t do_print_stack(tpmi_t *interp) {
-  size_t n = stack_depth(&interp->stack);
+  unsigned n = stack_depth(&interp->stack);
   cell_t *c;
   TAILQ_FOREACH(c, &interp->stack, list) {
-    printf("[%zu] ", --n);
+    printf("[%u] ", --n);
     print_cell(c);
     putchar('\n');
   }
@@ -190,22 +191,22 @@ static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
 }
 
 typedef struct arg_info {
-  size_t args;
+  unsigned args;
   cell_t *first;
 } arg_info_t;
 
 static bool check_func_args(tpmi_t *interp, word_t *word, arg_info_t *ai) {
   const char *sig = word->func.sig;
-  size_t depth = stack_depth(&interp->stack);
-  size_t n = strlen(sig);
-  size_t args = 0;
+  unsigned depth = stack_depth(&interp->stack);
+  unsigned n = strlen(sig);
+  unsigned args = 0;
 
   for (int i = n - 1; i >= 0; i--)
     if (!isupper(sig[i]))
       args++;
 
   if (depth < args) {
-    ERROR(interp, "'%s' expected %zu args, but stack has %zu elements",
+    ERROR(interp, "'%s' expected %u args, but stack has %u elements",
           word->key, args, depth);
     return false;
   }
@@ -258,7 +259,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
       return TPMI_ERROR;
 
     const char *sig = word->func.sig;
-    size_t n = strlen(sig);
+    unsigned n = strlen(sig);
 
     /* construct a call */
     ffi_type *arg_type[n];
@@ -327,7 +328,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
     /* remove input arguments from stack */
     arg = ai.first;
 
-    for (size_t i = 0; i < ai.args; i++) {
+    for (unsigned i = 0; i < ai.args; i++) {
       cell_t *c = arg;
       arg = CELL_NEXT(arg);
       CELL_REMOVE(&interp->stack, c);
@@ -450,20 +451,20 @@ void tpmi_delete(tpmi_t *interp) {
   free(interp);
 }
 
-static bool read_float(const char *str, size_t span, float *f) {
+static bool read_float(const char *str, unsigned span, float *f) {
   char *end;
   *f = strtof(str, &end);
   return end == str + span;
 }
 
-static bool read_int(const char *str, size_t span, int *i) {
+static bool read_int(const char *str, unsigned span, int *i) {
   char *end;
   bool hex = (str[0] == '0' && tolower(str[1]) == 'x');
   *i = strtol(hex ? str + 2 : str, &end, hex ? 16 : 10);
   return end == str + span;
 }
 
-static cell_t make_cell(const char *line, size_t span) {
+static cell_t make_cell(const char *line, unsigned span) {
   int i; float f;
 
   if (read_int(line, span, &i))
@@ -477,14 +478,14 @@ static cell_t make_cell(const char *line, size_t span) {
 
 tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
   tpmi_status_t status = TPMI_OK;
-  size_t n = 0;
+  unsigned n = 0;
 
   while (true) {
     /* skip spaces */
     line += strspn(line, " \t\n");
 
     /* find token */
-    size_t len;
+    unsigned len;
 
     if (*line == '"') {
       char *closing = strchr(line + 1, '"');
@@ -592,7 +593,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
 error:
 
     if (status == TPMI_ERROR) {
-      fprintf(stderr, RED "failure at token %zu\n" RESET, n + 1);
+      fprintf(stderr, RED "failure at token %u\n" RESET, n + 1);
       fprintf(stderr, RED "error: " RESET "%s\n", interp->errmsg);
       break;
     }
