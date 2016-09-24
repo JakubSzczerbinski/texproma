@@ -12,15 +12,27 @@ env['BUILDERS']['ctags'] = \
 env.Append(CCFLAGS = '-g -O2 -Wall')
 env.Append(LINKFLAGS = '-g')
 
-env.ParseConfig('pkg-config --cflags --libs sdl2 SDL2_ttf')
+for lib in ['sdl2', 'SDL2_ttf', 'libffi', 'libpng']:
+    env.ParseConfig('pkg-config --cflags --libs ' + lib)
+
+conf = Configure(env)
+if not conf.CheckCHeader('SDL.h'):
+    print 'SDL2 must be installed!'
+    Exit(1)
+if not conf.CheckCHeader('SDL_ttf.h'):
+    print 'SDL2_ttf must be installed!'
+    Exit(1)
+if not conf.CheckCHeader('png.h'):
+    print 'libpng must be installed!'
+    Exit(1)
+if not conf.CheckCHeader('ffi.h'):
+    print 'libpng must be installed!'
+    Exit(1)
+env = conf.Finish()
 
 env.Append(LIBS = ['texproma'])
 env.Append(LIBPATH = ['libtexproma'])
 env.Append(CPPPATH = ['libtexproma', 'linenoise'])
-
-env.Append(LIBS = ['avcall'])
-env.Append(LIBPATH = ['libffcall/avcall/.libs'])
-env.Append(CPPPATH = ['libffcall/avcall'])
 
 SConscript('libtexproma/SConscript')
 

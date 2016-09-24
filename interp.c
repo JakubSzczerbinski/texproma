@@ -4,8 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
-
-#include <avcall.h>
+#include <ffi.h>
 
 #include "interp.h"
 #include "ansi.h"
@@ -262,26 +261,32 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
     size_t n = strlen(sig);
 
     /* construct a call */
-    av_alist alist;
-    av_start_void (alist, word->func.fn);
+    ffi_type *arg_type[n];
+    void *arg_value[n];
 
     cell_t *arg = ai.first;
 
     for (int i = 0; i < n; i++) {
       if (!isupper(sig[i])) {
         /* pass input arguments */
-        if (arg->type == CT_INT)
-          av_int(alist, arg->i);
-        else if (arg->type == CT_FLOAT)
-          av_float(alist, arg->f);
-        else if (arg->type == CT_STRING)
-          av_ptr(alist, uint8_t *, arg->str);
-        else if (arg->type == CT_MONO)
-          av_ptr(alist, tpm_mono_buf, arg->mono);
-        else if (arg->type == CT_COLOR)
-          av_ptr(alist, tpm_color_buf, arg->color);
-        else
+        if (arg->type == CT_INT) {
+          arg_type[i] = &ffi_type_sint;
+          arg_value[i] = &arg->i;
+        } else if (arg->type == CT_FLOAT) {
+          arg_type[i] = &ffi_type_float;
+          arg_value[i] = &arg->f;
+        } else if (arg->type == CT_STRING) {
+          arg_type[i] = &ffi_type_pointer;
+          arg_value[i] = &arg->str;
+        } else if (arg->type == CT_MONO) {
+          arg_type[i] = &ffi_type_pointer;
+          arg_value[i] = &arg->mono;
+        } else if (arg->type == CT_COLOR) {
+          arg_type[i] = &ffi_type_pointer;
+          arg_value[i] = &arg->color;
+        } else {
           abort();
+        }
 
         arg = CELL_NEXT(arg);
       } else {
@@ -289,26 +294,35 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
         char type = tolower(sig[i]);
         cell_t *c;
 
+        arg_type[i] = &ffi_type_pointer;
+
         if (type == CT_INT) {
           c = cell_int(0);
-          av_ptr(alist, int *, &c->i);
+          arg_value[i] = &c->i;
         } else if (type == CT_FLOAT) {
           c = cell_float(0.0);
-          av_ptr(alist, float *, &c->f);
+          arg_value[i] = &c->f;
         } else if (type == CT_MONO) {
           c = cell_mono();
-          av_ptr(alist, tpm_mono_buf, c->mono);
+          arg_value[i] = &c->mono;
         } else if (type == CT_COLOR) {
           c = cell_color();
-          av_ptr(alist, tpm_color_buf, c->color);
-        } else
+          arg_value[i] = &c->color;
+        } else {
           abort();
+        }
 
         STACK_PUSH(&interp->stack, c);
       }
     }
 
-    av_call(alist);
+    ffi_cif cif;
+    ffi_arg result;
+
+    assert(ffi_prep_cif(&cif, FFI_DEFAULT_ABI,
+                        n, &ffi_type_void, arg_type) == FFI_OK);
+
+    ffi_call(&cif, FFI_FN(word->func.fn), &result, arg_value);
 
     /* remove input arguments from stack */
     arg = ai.first;
