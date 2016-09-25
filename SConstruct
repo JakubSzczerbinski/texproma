@@ -29,10 +29,10 @@ if platform.system() == 'Darwin':
 env['BUILDERS']['ctags'] = \
     SCons.Builder.Builder(action='ctags --tag-relative=yes -f $TARGET $SOURCES')
 
+# --=[ Configuration ]=--------------------------------------------------------
+
 env.Append(CCFLAGS = '-g -O2 -Wall')
 env.Append(LINKFLAGS = '-g')
-
-sources = ['main.c', 'cell.c', 'dict.c', 'gui.c', 'interp.c']
 
 conf = Configure(env)
 
@@ -44,7 +44,7 @@ dependencies = [('m', 'math.h', None),
                 ('SDL2_ttf', 'SDL_ttf.h', 'SDL2_ttf'),
                 ('ffi', 'ffi.h', 'libffi'),
                 ('png', 'png.h', 'libpng'),
-                ('edit', 'histedit.h', 'libedit')]
+                ('edit', 'editline/readline.h', 'libedit')]
 
 conf.CheckProg('pkg-config')
 
@@ -57,11 +57,18 @@ for lib, header, pkg in dependencies:
 
 env = conf.Finish()
 
+# --=[ Compilation ]=----------------------------------------------------------
+
 env.AlwaysBuild(env.Command('config.h', 'config.h.in', config_h_build))
+
+ctag_sources = [Glob('*.[ch]'), Glob('libtexproma/*.[ch]')]
+Alias('tags', env.ctags(source=ctag_sources, target='tags'))
 
 env.Append(LIBS = ['texproma'])
 env.Append(LIBPATH = ['libtexproma'])
-env.Append(CPPPATH = ['libtexproma', 'linenoise'])
+env.Append(CPPPATH = ['libtexproma'])
+
+sources = ['main.c', 'cell.c', 'dict.c', 'gui.c', 'interp.c']
 
 if not env['HAVE_STRNDUP']:
     sources += ['extra/strndup.c']
@@ -69,11 +76,6 @@ if not env['HAVE_RANDOM']:
     sources += ['extra/random.c']
 
 SConscript('libtexproma/SConscript')
-
-ctag_sources = [Glob('*.[ch]'), Glob('libtexproma/*.[ch]')]
-sources += ['linenoise/linenoise.c']
-
-Alias('tags', env.ctags(source=ctag_sources, target='tags'))
 
 prog = env.Program(target='texproma', source=sources)
 Clean(prog, ['texproma.dSYM', Glob('*~')])
