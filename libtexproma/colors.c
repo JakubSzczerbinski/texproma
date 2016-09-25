@@ -1,10 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "libtexproma_private.h"
 
-#if 0
-void tpm_change_hsv(tpm_color_buf dst, tpm_color_buf src,
+void tpm_hsv_modify(tpm_color_buf dst, tpm_color_buf src,
                     float hue, float sat)
 {
   hue = constrain(hue, 0.0f, 1.0f);
@@ -12,13 +8,12 @@ void tpm_change_hsv(tpm_color_buf dst, tpm_color_buf src,
 
   for (int y = 0; y < TP_HEIGHT; y++) {
     for (int x = 0; x < TP_WIDTH; x++) {
-      colorf_t c;
+      colori c = tpm_get_color_pixel(src, x, y);
 
-      tp_reg_get_rgb_pixelf(rc_src, x, y, &c);
-
+      float r = c.r, g = c.g, b = c.b;
       float h, s, v;
 
-      tp_rgb_to_hsv(c.r, c.g, c.b, &h, &s, &v);
+      tpm_rgb_to_hsv(r, g, b, &h, &s, &v);
 
       h += hue;
 
@@ -27,13 +22,14 @@ void tpm_change_hsv(tpm_color_buf dst, tpm_color_buf src,
 
       s *= sat;
 
-      tpm_hsv_to_rgb(&c.r, &c.g, &c.b, h, s, v);
+      tpm_hsv_to_rgb(&r, &g, &b, h, s, v);
 
-      tpm_put_rgb_pixelf(rc_dst, x, y, &c);
+      c = (colori){.r = r, .g = g, .b = b};
+
+      tpm_put_color_pixel(dst, x, y, c);
     }
   }
 }
-#endif
 
 void tpm_invert(tpm_mono_buf dst, tpm_mono_buf src) {
   for (int y = 0; y < TP_HEIGHT; y++)

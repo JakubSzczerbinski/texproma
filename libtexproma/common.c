@@ -42,26 +42,6 @@ void tpm_put_color_pixel(tpm_color_buf buf, int x, int y, colori c) {
   buf[i].b = tpm_clampi(c.b);
 }
 
-#if 0
-void tp_reg_get_rgb_pixelf(uint8_t num, int16_t x, int16_t y, colorf_t *c)
-{
-  int i = y * TP_WIDTH + x;
-
-  c->r = TP_REG_RGB_LAYER(num)->r[i] / 255.0f;
-  c->g = TP_REG_RGB_LAYER(num)->g[i] / 255.0f;
-  c->b = TP_REG_RGB_LAYER(num)->b[i] / 255.0f;
-}
-
-void tp_reg_put_rgb_pixelf(uint8_t num, int16_t x, int16_t y, colorf_t *c)
-{
-  int i = y * TP_WIDTH + x;
-
-  TP_REG_RGB_LAYER(num)->r[i] = tp_pixel_clampi((int)(c->r * 255.0f));
-  TP_REG_RGB_LAYER(num)->g[i] = tp_pixel_clampi((int)(c->g * 255.0f));
-  TP_REG_RGB_LAYER(num)->b[i] = tp_pixel_clampi((int)(c->b * 255.0f));
-}
-#endif
-
 /* https://en.wikipedia.org/wiki/Bilinear_filtering */
 int tpm_get_filtered_pixel(tpm_mono_buf buf, float x, float y) {
   float u = floorf(x), v = floorf(y);

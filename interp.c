@@ -386,6 +386,7 @@ static func_ctor_t cfuncs[] = {
   { "distort", &tpm_distort, "Mmmmff" },
   { "invert", &tpm_invert, "Mm" },
   { "sine-color", &tpm_sine_color, "Mmi" },
+  { "hsv-modify", &tpm_hsv_modify, "Ccff" },
   { "brightness", &tpm_brightness, "Mmf" },
   { "contrast", &tpm_contrast, "Mmf" },
   { "colorize", &tpm_colorize, "Cmii" },

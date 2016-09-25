@@ -49,6 +49,8 @@ void tpm_distort(tpm_mono_buf dst, tpm_mono_buf src,
 
 /* color ops */
 void tpm_invert(tpm_mono_buf dst, tpm_mono_buf src);
+void tpm_hsv_modify(tpm_color_buf dst, tpm_color_buf src,
+                    float hue, float sat);
 void tpm_sine_color(tpm_mono_buf dst, tpm_mono_buf src, unsigned sine_cycles);
 void tpm_brightness(tpm_mono_buf dst, tpm_mono_buf src, float factor);
 void tpm_contrast(tpm_mono_buf dst, tpm_mono_buf src, float contrast);
