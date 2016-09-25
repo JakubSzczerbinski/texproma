@@ -34,6 +34,10 @@ env['BUILDERS']['ctags'] = \
 env.Append(CCFLAGS = '-g -O2 -Wall')
 env.Append(LINKFLAGS = '-g')
 
+env.Append(LIBS = ['texproma'])
+env.Append(LIBPATH = ['libtexproma'])
+env.Append(CPPPATH = ['libtexproma'])
+
 conf = Configure(env)
 
 env['HAVE_STRNDUP'] = conf.CheckFunc('strndup')
@@ -43,14 +47,19 @@ dependencies = [('m', 'math.h', None),
                 ('SDL2', 'SDL.h', 'sdl2'),
                 ('SDL2_ttf', 'SDL_ttf.h', 'SDL2_ttf'),
                 ('ffi', 'ffi.h', 'libffi'),
-                ('png', 'png.h', 'libpng'),
-                ('edit', 'editline/readline.h', 'libedit')]
+                ('png', 'png.h', 'libpng')]
+
+if platform.system().startswith('MINGW'):
+    dependencies += [('edit', 'editline/readline.h', None)]
+else:
+    dependencies += [('edit', 'editline/readline.h', 'libedit')]
 
 conf.CheckProg('pkg-config')
 
 for lib, header, pkg in dependencies:
     if pkg:
-        env.ParseConfig('pkg-config --cflags --libs ' + pkg)
+        env.ParseConfig('pkg-config --cflags ' + pkg)
+        env.ParseConfig('pkg-config --libs ' + pkg)
 
     if not conf.CheckLib(lib) or not conf.CheckCHeader(header):
         Exit(1)
@@ -64,10 +73,6 @@ env.AlwaysBuild(env.Command('config.h', 'config.h.in', config_h_build))
 ctag_sources = [Glob('*.[ch]'), Glob('libtexproma/*.[ch]')]
 Alias('tags', env.ctags(source=ctag_sources, target='tags'))
 
-env.Append(LIBS = ['texproma'])
-env.Append(LIBPATH = ['libtexproma'])
-env.Append(CPPPATH = ['libtexproma'])
-
 sources = ['main.c', 'cell.c', 'dict.c', 'gui.c', 'interp.c']
 
 if not env['HAVE_STRNDUP']:
@@ -75,7 +80,7 @@ if not env['HAVE_STRNDUP']:
 if not env['HAVE_RANDOM']:
     sources += ['extra/random.c']
 
-SConscript('libtexproma/SConscript')
+SConscript('libtexproma/SConscript', exports='env')
 
 prog = env.Program(target='texproma', source=sources)
 Clean(prog, ['texproma.dSYM', Glob('*~')])

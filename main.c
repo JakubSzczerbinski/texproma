@@ -58,19 +58,16 @@ int main(int argc, char *argv[]) {
   gui_init();
   gui_update(interp);
 
-  rl_initialize();
+  /* Set up our own handler for CTRL + C */
+  signal(SIGINT, sigint);
+
   rl_readline_name = "texproma";
   rl_attempted_completion_function = texproma_completion;
-
-  /* Set up our own handler for CTRL + C */
-  struct sigaction action = {{sigint}, 0, 0};
-  sigaction(SIGINT, &action, NULL);
 
   puts(MAGENTA BOLD "TEX" WHITE "ture " MAGENTA "PRO" WHITE "cessing "
        MAGENTA "MA" WHITE "chine" RESET);
   puts("Copyright © 1999-2016 Krystian Bacławski");
   puts("Press CTRL+C to exit");
-
 
   char *histline = NULL;
   char *line;
