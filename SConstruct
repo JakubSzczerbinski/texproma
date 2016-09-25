@@ -20,7 +20,6 @@ def config_h_build(target, source, env):
                 print >>c_out, ''
                 c_out.write(c_in.read())
 
-
 env = Environment()
 
 if platform.system() == 'Darwin':
@@ -33,10 +32,6 @@ env['BUILDERS']['ctags'] = \
 
 env.Append(CCFLAGS = '-g -O2 -Wall')
 env.Append(LINKFLAGS = '-g')
-
-env.Append(LIBS = ['texproma'])
-env.Append(LIBPATH = ['libtexproma'])
-env.Append(CPPPATH = ['libtexproma'])
 
 conf = Configure(env)
 
@@ -70,8 +65,14 @@ env = conf.Finish()
 
 env.AlwaysBuild(env.Command('config.h', 'config.h.in', config_h_build))
 
+SConscript('libtexproma/SConscript', exports='env')
+
 ctag_sources = [Glob('*.[ch]'), Glob('libtexproma/*.[ch]')]
 Alias('tags', env.ctags(source=ctag_sources, target='tags'))
+
+env.Append(LIBS = ['texproma'])
+env.Append(LIBPATH = ['libtexproma'])
+env.Append(CPPPATH = ['libtexproma'])
 
 sources = ['main.c', 'cell.c', 'dict.c', 'gui.c', 'interp.c']
 
@@ -79,8 +80,6 @@ if not env['HAVE_STRNDUP']:
     sources += ['extra/strndup.c']
 if not env['HAVE_RANDOM']:
     sources += ['extra/random.c']
-
-SConscript('libtexproma/SConscript', exports='env')
 
 prog = env.Program(target='texproma', source=sources)
 Clean(prog, ['texproma.dSYM', Glob('*~')])
