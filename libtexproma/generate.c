@@ -17,14 +17,13 @@ void tpm_plasma(tpm_mono_buf dst, unsigned xsines, unsigned ysines) {
   xsines = constrain(xsines, 1, 100);
   ysines = constrain(ysines, 1, 100);
 
-  const float dx = 2.0f * M_PI / TP_WIDTH;
-  const float dy = 2.0f * M_PI / TP_HEIGHT;
+  const float dx = xsines * 2.0f * M_PI / TP_WIDTH;
+  const float dy = ysines * 2.0f * M_PI / TP_HEIGHT;
 
   for (int y = 0; y < TP_HEIGHT; y++) {
     for (int x = 0; x < TP_WIDTH; x++) {
-      float v = 0.5f * (sinf(ysines * y * dy) + sinf(xsines * x * dx));
-      tpm_put_pixel(dst, x, y, 
-                    constrain(lroundf((v + 1.0f) * 128.0f), 0, 255));
+      float v = 0.5f * (sinf(y * dy) + sinf(x * dx)) + 1.0f;
+      tpm_put_pixel(dst, x, y, constrain(lroundf(v * 128.0f), 0, 255));
     }
   }
 }

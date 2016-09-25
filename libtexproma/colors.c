@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "libtexproma_private.h"
 
 #if 0
@@ -73,7 +76,7 @@ void tpm_brightness(tpm_mono_buf dst, tpm_mono_buf src, float factor) {
  * @param constrast - contrast change
  */
 void tpm_contrast(tpm_mono_buf dst, tpm_mono_buf src, float contrast) {
-  contrast = constrain(contrast, 0.0f, 1.0f);
+  contrast = constrain(contrast, -1.0f, 1.0f) + 1.0f;
 
   for (int y = 0; y < TP_HEIGHT; y++) {
     for (int x = 0; x < TP_WIDTH; x++) {
@@ -84,18 +87,23 @@ void tpm_contrast(tpm_mono_buf dst, tpm_mono_buf src, float contrast) {
   }
 }
 
-void tpm_colorize(tpm_color_buf dst, tpm_mono_buf src, color_t c1, color_t c2) {
-  colori d = { c2.r - c1.r, c2.g - c1.g, c2.b - c1.b };
+#define R(x) (((x) & 0xff0000) >> 16)
+#define G(x) (((x) & 0x00ff00) >> 8)
+#define B(x) ((x) & 0x0000ff)
+
+void tpm_colorize(tpm_color_buf dst, tpm_mono_buf src, unsigned c1, unsigned c2)
+{
+  const float r = 1.0f / 255.0f;
 
   for (int y = 0; y < TP_HEIGHT; y++) {
     for (int x = 0; x < TP_WIDTH; x++) {
-      int p = tpm_get_pixel(src, x, y);
+      float p = r * tpm_get_pixel(src, x, y);
 
-      colori c;
-
-      c.r = ((d.r * p) >> 8) + c1.r;
-      c.g = ((d.g * p) >> 8) + c1.g;
-      c.b = ((d.b * p) >> 8) + c2.b;
+      colori c = {
+        .r = lerp(R(c1), R(c2), p),
+        .g = lerp(G(c1), G(c2), p),
+        .b = lerp(B(c1), B(c2), p)
+      };
 
       tpm_put_color_pixel(dst, x, y, c);
     }

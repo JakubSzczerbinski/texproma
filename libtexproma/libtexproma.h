@@ -49,7 +49,8 @@ void tpm_invert(tpm_mono_buf dst, tpm_mono_buf src);
 void tpm_sine_color(tpm_mono_buf dst, tpm_mono_buf src, unsigned sine_cycles);
 void tpm_brightness(tpm_mono_buf dst, tpm_mono_buf src, float factor);
 void tpm_contrast(tpm_mono_buf dst, tpm_mono_buf src, float contrast);
-void tpm_colorize(tpm_color_buf dst, tpm_mono_buf src, color_t c1, color_t c2);
+void tpm_colorize(tpm_color_buf dst, tpm_mono_buf src,
+                  unsigned c1, unsigned c2);
 void tpm_grayscale(tpm_mono_buf dst, tpm_color_buf src);
 
 /* filter ops */

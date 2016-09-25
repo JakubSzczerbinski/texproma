@@ -9,7 +9,7 @@
 #define NUM 4
 #define FONT_H 16
 
-typedef struct { uint8_t a, r, g, b; } RGBA;
+typedef struct { uint8_t a, b, g, r; } RGBA;
 
 static SDL_Window *window;
 static SDL_Renderer *renderer;
