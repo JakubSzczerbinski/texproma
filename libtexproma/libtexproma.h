@@ -17,8 +17,10 @@ void tpm_explode(tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b,
                  tpm_color_buf c);
 void tpm_implode(tpm_color_buf c, 
                  tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b);
+void tpm_mono_buf_save(tpm_mono_buf src, char *filename);
 
 /* generate ops */
+void tpm_sine(tpm_mono_buf dst, unsigned sines, unsigned n, float amplitude);
 void tpm_noise(tpm_mono_buf dst, unsigned step, unsigned seed);
 void tpm_plasma(tpm_mono_buf dst, unsigned xsines, unsigned ysines);
 void tpm_light(tpm_mono_buf dst, unsigned type, float radius);
