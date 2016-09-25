@@ -20,7 +20,8 @@ void tpm_implode(tpm_color_buf c,
 void tpm_mono_buf_save(tpm_mono_buf src, char *filename);
 
 /* generate ops */
-void tpm_sine(tpm_mono_buf dst, unsigned sines, unsigned n, float amplitude);
+void tpm_sine(tpm_mono_buf dst,
+              unsigned cycles, unsigned bands, float amplitude);
 void tpm_noise(tpm_mono_buf dst, unsigned step, unsigned seed);
 void tpm_plasma(tpm_mono_buf dst, unsigned xsines, unsigned ysines);
 void tpm_light(tpm_mono_buf dst, unsigned type, float radius);
@@ -37,12 +38,14 @@ void tpm_shade(tpm_mono_buf dst, tpm_mono_buf src1, tpm_mono_buf src2);
 void tpm_mix_map(tpm_mono_buf dst, tpm_mono_buf src1, tpm_mono_buf src2,
                  tpm_mono_buf map);
 
-/* distortion ops */
+/* transformation ops */
+void tpm_flip(tpm_mono_buf dst, tpm_mono_buf src);
+void tpm_rotate(tpm_mono_buf dst, tpm_mono_buf src);
 void tpm_twist(tpm_mono_buf dst, tpm_mono_buf src, float strenght);
 void tpm_move(tpm_mono_buf dst, tpm_mono_buf src, float move_x, float move_y);
-void tpm_uvmap(tpm_mono_buf dst, tpm_mono_buf src,
-               tpm_mono_buf umap, tpm_mono_buf vmap, 
-               float ustrength, float vstrength);
+void tpm_distort(tpm_mono_buf dst, tpm_mono_buf src,
+                 tpm_mono_buf umap, tpm_mono_buf vmap, 
+                 float ustrength, float vstrength);
 
 /* color ops */
 void tpm_invert(tpm_mono_buf dst, tpm_mono_buf src);

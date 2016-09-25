@@ -2,8 +2,15 @@
 
 Import('env')
 
-sources = ['common.c', 'distort.c', 'generate.c', 'layers.c', 'colors.c',
-           'filter.c', 'file.c']
+sources = [
+    'colors.c',
+    'common.c',
+    'file.c',
+    'filter.c',
+    'generate.c',
+    'layers.c',
+    'transform.c'
+]
 
 lib = env.StaticLibrary(target='texproma', source=sources)
 Clean(lib, Glob('*~'))

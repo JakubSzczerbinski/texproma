@@ -1,15 +1,19 @@
 #include "libtexproma_private.h"
 
-void tpm_sine(tpm_mono_buf dst, unsigned sines, unsigned n, float amplitude) {
-  sines = constrain(sines, 1, 100);
-  amplitude = constrain(amplitude, 0.0, (float)n);
+void tpm_sine(tpm_mono_buf dst,
+              unsigned cycles, unsigned bands, float amplitude) 
+{
+  cycles = constrain(cycles , 1, 32);
+  bands = constrain(bands, 1, 32);
+  amplitude = constrain(amplitude, 0.0, (float)bands);
 
-  const float dy = 2.0f * M_PI / TP_HEIGHT;
+  const float dy = cycles * 2.0f * M_PI / TP_HEIGHT;
+  const float dv = amplitude / cycles * (float)TP_WIDTH;
 
   for (int y = 0; y < TP_HEIGHT; y++) {
-    int v = (amplitude / sines) * sinf(sines * y * dy) * (float)TP_WIDTH;
+    int v = dv * sinf(y * dy);
     for (int x = 0; x < TP_WIDTH; x++)
-      tpm_put_pixel(dst, x, y, (n * x + v) & 255);
+      tpm_put_pixel(dst, x, y, (bands * x + v) & 255);
   }
 }
 

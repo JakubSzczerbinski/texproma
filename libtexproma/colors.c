@@ -41,13 +41,15 @@ void tpm_invert(tpm_mono_buf dst, tpm_mono_buf src) {
       tpm_put_pixel(dst, x, y, 255 - tpm_get_pixel(src, x, y));
 }
 
-void tpm_sine_color(tpm_mono_buf dst, tpm_mono_buf src, unsigned sine_cycles) {
+void tpm_sine_color(tpm_mono_buf dst, tpm_mono_buf src, unsigned cycles) {
   static int tab[256];
 
-  sine_cycles = constrain(sine_cycles, 2, 32);
+  cycles = constrain(cycles, 1, 32);
+
+  const float di = cycles * 2.0f * M_PI / 255.0f;
 
   for (int i = 0; i < 256; i++)
-      tab[i] = 127 - (sinf(i / 256.0f * sine_cycles * M_2_PI) * 127.0f) + 127;
+      tab[i] = 0.5f * (1.0f - cosf(i * di)) * 255.0f;
 
   for (int y = 0; y < TP_HEIGHT; y++)
     for (int x = 0; x < TP_WIDTH; x++)
@@ -65,9 +67,7 @@ void tpm_brightness(tpm_mono_buf dst, tpm_mono_buf src, float factor) {
     for (int x = 0; x < TP_WIDTH; x++) {
       float p = tpm_get_pixel(src, x, y);
 
-      p += (factor < 0) ? (-p * factor) : ((1.0f - p) * factor);
-
-      tpm_put_pixel(dst, x, y, (int)p);
+      tpm_put_pixel(dst, x, y, p * (1.0f + factor));
     }
   }
 }

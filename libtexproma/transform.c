@@ -1,40 +1,16 @@
 #include "libtexproma_private.h"
 
-#if 0
-void tpm_distort_sine(uint8_t *pic, uint8_t xsines, uint8_t ysines, uint8_t
-                        xamp, uint8_t yamp, uint8_t xshift, uint8_t yshift) {
-  uint8_t *dlr,*dlg,*dlb,*slr,*slg,*slb;
-  uint16_t x,y;
-  uint32_t  i;
-  float tx,ty;
-
-  for (i=0;i<256;i++)
-  {
-    sinfx[i]=0.25*sin(((i+xshift)*xsines)*2*M_PI/256)*xamp;
-    sinfy[i]=0.25*sin(((i+yshift)*ysines)*2*M_PI/256)*yamp;
-  }
-
-  slr=pic;
-  slg=pic+0x10000;
-  slb=pic+0x20000;
-
-  dlr=layer[12];
-  dlg=layer[13];
-  dlb=layer[14];
-
-  for (y=0,i=0;y<256;y++)
-    for (x=0;x<256;x++,i++)
-    {
-      tx=(float)x+sinfx[y];
-      ty=(float)y+sinfy[x];
-      dlr[i]=GetFilteredPix(slr,tx,ty);
-      dlg[i]=GetFilteredPix(slg,tx,ty);
-      dlb[i]=GetFilteredPix(slb,tx,ty);
-    }
-
-  CopyTempLayer(pic);
+void tpm_flip(tpm_mono_buf dst, tpm_mono_buf src) {
+  for (int y = 0; y < TP_HEIGHT; y++)
+    for (int x = 0; x < TP_WIDTH; x++)
+      tpm_put_pixel(dst, (TP_WIDTH - 1) - x, y, tpm_get_pixel(src, x, y));
 }
-#endif
+
+void tpm_rotate(tpm_mono_buf dst, tpm_mono_buf src) {
+  for (int y = 0; y < TP_HEIGHT; y++)
+    for (int x = 0; x < TP_WIDTH; x++)
+      tpm_put_pixel(dst, y, x, tpm_get_pixel(src, x, y));
+}
 
 void tpm_twist(tpm_mono_buf dst, tpm_mono_buf src, float strength) {
   float s = constrain(strength, -1.0f, 1.0f) * 2.0f * M_PI / TP_WIDTH;
@@ -73,9 +49,9 @@ void tpm_move(tpm_mono_buf dst, tpm_mono_buf src, float move_x, float move_y) {
       tpm_put_pixel(dst, x, y, tpm_get_pixel(src, x + xo, y + yo));
 }
 
-void tpm_uvmap(tpm_mono_buf dst, tpm_mono_buf src,
-               tpm_mono_buf umap, tpm_mono_buf vmap, 
-               float ustrength, float vstrength)
+void tpm_distort(tpm_mono_buf dst, tpm_mono_buf src,
+                 tpm_mono_buf umap, tpm_mono_buf vmap, 
+                 float ustrength, float vstrength)
 {
   for (int y = 0; y < TP_HEIGHT; y++) {
     for (int x = 0; x < TP_WIDTH; x++) {
