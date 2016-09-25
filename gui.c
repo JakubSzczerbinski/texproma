@@ -9,10 +9,11 @@
 #define NUM 4
 #define FONT_H 16
 
+typedef struct { uint8_t a, r, g, b; } RGBA;
+
 static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Texture *texture;
-static color_t *pixels;
 static TTF_Font *font16;
 
 static void RenderText(SDL_Renderer *renderer, TTF_Font *font,
@@ -66,12 +67,10 @@ void gui_init() {
   renderer = SDL_CreateRenderer(window, -1,
                                 SDL_RENDERER_ACCELERATED);
   texture = SDL_CreateTexture(renderer, 
-                              SDL_PIXELFORMAT_RGB24,
+                              SDL_PIXELFORMAT_RGBA8888,
                               SDL_TEXTUREACCESS_STREAMING,
                               TP_WIDTH, TP_HEIGHT);
   assert(texture != NULL);
-
-  pixels = malloc(TP_WIDTH * TP_HEIGHT * sizeof(color_t));
 
   /* Clean up on exit */
   atexit(gui_end);
@@ -80,7 +79,6 @@ void gui_init() {
 void gui_end() {
   TTF_CloseFont(font16);
 
-  free(pixels);
   SDL_DestroyTexture(texture);
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
@@ -118,20 +116,29 @@ void gui_update(tpmi_t *interp) {
     if (c->type == CT_MONO || c->type == CT_COLOR) {
       if (--imgcnt > 0) {
         int x = imgcnt * TP_WIDTH;
-        SDL_Rect dst = { x, FONT_H, TP_WIDTH, TP_HEIGHT + FONT_H };
+        SDL_Rect dst = { x, FONT_H, TP_WIDTH, TP_HEIGHT };
 
         /* display texture */
+        int pitch;
+        RGBA *pixels;
+
+        assert(SDL_LockTexture(texture, NULL, (void **)&pixels, &pitch) == 0);
+        assert(pitch == TP_WIDTH * sizeof(RGBA));
+
         if (c->type == CT_MONO) {
           for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
             uint8_t p = c->mono[i];
-            pixels[i] = (color_t){.r = p, .g = p, .b = p};
+            pixels[i] = (RGBA){.r = p, .g = p, .b = p};
           }
         } else {
-          memcpy(pixels, c->color, sizeof(color_t) * TP_WIDTH * TP_HEIGHT);
+          for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
+            color_t p = c->color[i];
+            pixels[i] = (RGBA){.r = p.r, .g = p.g, .b = p.b};
+          }
         }
-        assert(SDL_UpdateTexture(texture, NULL, pixels,
-                                 TP_WIDTH * sizeof(color_t)) == 0);
-        SDL_RenderCopy(renderer, texture, NULL, &dst);
+
+        SDL_UnlockTexture(texture);
+        assert(SDL_RenderCopy(renderer, texture, NULL, &dst) == 0);
 
         /* display stack position */
         snprintf(str, sizeof(str), "STACK [%d]", n);
