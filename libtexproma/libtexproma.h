@@ -18,6 +18,7 @@ void tpm_explode(tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b,
 void tpm_implode(tpm_color_buf c, 
                  tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b);
 void tpm_mono_buf_save(tpm_mono_buf src, char *filename);
+void tpm_color_buf_save(tpm_color_buf src, char *filename);
 
 /* generate ops */
 void tpm_sine(tpm_mono_buf dst,

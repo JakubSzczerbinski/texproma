@@ -4,7 +4,7 @@
 
 #include "libtexproma_private.h"
 
-void tpm_mono_buf_save(tpm_mono_buf src, char *filename) {
+static void tpm_buf_save(void *src, unsigned type, char *filename) {
   FILE *fp = fopen(filename, "wb");
 
   assert(fp != NULL);
@@ -22,22 +22,27 @@ void tpm_mono_buf_save(tpm_mono_buf src, char *filename) {
   png_init_io(png, fp);
 
   png_set_IHDR(png, info,
-               TP_WIDTH, TP_HEIGHT,
-               8, PNG_COLOR_TYPE_GRAY,
-               PNG_INTERLACE_NONE,
-               PNG_COMPRESSION_TYPE_DEFAULT,
-               PNG_FILTER_TYPE_DEFAULT);
+               TP_WIDTH, TP_HEIGHT, 8, type, PNG_INTERLACE_NONE,
+               PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
   png_write_info(png, info);
 
-  uint8_t **row_pointers = calloc(TP_HEIGHT, sizeof(uint8_t *));
+  int row_size = TP_WIDTH *
+    ((type == PNG_COLOR_TYPE_RGB) ? sizeof(color_t) : sizeof(uint8_t));
 
   for (int i = 0; i < TP_HEIGHT; i++)
-    row_pointers[i] = &src[i * TP_WIDTH];
+		png_write_row(png, src + i * row_size);
 
-  png_write_image(png, row_pointers);
   png_write_end(png, NULL);
-
-  free(row_pointers);
+  png_free_data(png, info, PNG_FREE_ALL, -1);
+	png_destroy_write_struct(&png, NULL);
 
   fclose(fp);
+}
+
+void tpm_mono_buf_save(tpm_mono_buf src, char *filename) {
+  tpm_buf_save((void *)src, PNG_COLOR_TYPE_GRAY, filename);
+}
+
+void tpm_color_buf_save(tpm_color_buf src, char *filename) {
+  tpm_buf_save((void *)src, PNG_COLOR_TYPE_RGB, filename);
 }

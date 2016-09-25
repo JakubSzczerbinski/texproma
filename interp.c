@@ -368,6 +368,7 @@ static func_ctor_t cfuncs[] = {
   { "explode", &tpm_explode, "MMMc" },
   { "implode", &tpm_implode, "Cmmm" },
   { "save-mono", &tpm_mono_buf_save, "ms" },
+  { "save-color", &tpm_color_buf_save, "cs" },
   { "sine", &tpm_sine, "Miif" },
   { "noise", &tpm_noise, "Mii" },
   { "plasma", &tpm_plasma, "Mii" },
