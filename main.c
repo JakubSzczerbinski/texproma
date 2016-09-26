@@ -58,7 +58,6 @@ int main(int argc, char *argv[]) {
   interp = tpmi_new(); 
 
   gui_init();
-  tpmi_compile(interp, "3 3 plasma");
   gui_update(interp);
 
   /* Set up our own handler for CTRL + C */

@@ -1,28 +1,22 @@
 #include "libtexproma_private.h"
 
-void tpm_sine(tpm_mono_buf dst,
-              unsigned cycles, unsigned bands, float amplitude) 
+void tpm_sine(tpm_mono_buf dst, float amplitude) 
 {
-  cycles = constrain(cycles , 1, 32);
-  bands = constrain(bands, 1, 32);
-  amplitude = constrain(amplitude, 0.0, (float)bands);
+  amplitude = constrain(amplitude, -1.0f, 1.0f);
 
-  const float dy = cycles * 2.0f * M_PI / TP_HEIGHT;
-  const float dv = amplitude / cycles * (float)TP_WIDTH;
+  const float dy = 2.0f * M_PI / TP_HEIGHT;
+  const float dv = amplitude * TP_WIDTH;
 
   for (int y = 0; y < TP_HEIGHT; y++) {
     int v = dv * sinf(y * dy);
     for (int x = 0; x < TP_WIDTH; x++)
-      tpm_put_pixel(dst, x, y, (bands * x + v) & 255);
+      tpm_put_pixel(dst, x, y, (x + v) & 255);
   }
 }
 
-void tpm_plasma(tpm_mono_buf dst, unsigned xsines, unsigned ysines) {
-  xsines = constrain(xsines, 1, 100);
-  ysines = constrain(ysines, 1, 100);
-
-  const float dx = xsines * 2.0f * M_PI / TP_WIDTH;
-  const float dy = ysines * 2.0f * M_PI / TP_HEIGHT;
+void tpm_plasma(tpm_mono_buf dst) {
+  const float dx = 2.0f * M_PI / TP_WIDTH;
+  const float dy = 2.0f * M_PI / TP_HEIGHT;
 
   for (int y = 0; y < TP_HEIGHT; y++) {
     for (int x = 0; x < TP_WIDTH; x++) {

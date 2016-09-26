@@ -21,10 +21,9 @@ void tpm_mono_buf_save(tpm_mono_buf src, char *filename);
 void tpm_color_buf_save(tpm_color_buf src, char *filename);
 
 /* generate ops */
-void tpm_sine(tpm_mono_buf dst,
-              unsigned cycles, unsigned bands, float amplitude);
+void tpm_sine(tpm_mono_buf dst, float amplitude);
 void tpm_noise(tpm_mono_buf dst, unsigned step, unsigned seed);
-void tpm_plasma(tpm_mono_buf dst, unsigned xsines, unsigned ysines);
+void tpm_plasma(tpm_mono_buf dst);
 void tpm_light(tpm_mono_buf dst, unsigned type, float radius);
 void tpm_perlin_noise(tpm_mono_buf dst, unsigned seed);
 
@@ -40,6 +39,7 @@ void tpm_mix_map(tpm_mono_buf dst, tpm_mono_buf src1, tpm_mono_buf src2,
                  tpm_mono_buf map);
 
 /* transformation ops */
+void tpm_repeat(tpm_mono_buf dst, tpm_mono_buf src, unsigned nx, unsigned ny);
 void tpm_flip(tpm_mono_buf dst, tpm_mono_buf src);
 void tpm_rotate(tpm_mono_buf dst, tpm_mono_buf src);
 void tpm_twist(tpm_mono_buf dst, tpm_mono_buf src, float strenght);
@@ -52,7 +52,7 @@ void tpm_distort(tpm_mono_buf dst, tpm_mono_buf src,
 void tpm_invert(tpm_mono_buf dst, tpm_mono_buf src);
 void tpm_hsv_modify(tpm_color_buf dst, tpm_color_buf src,
                     float hue, float sat);
-void tpm_sine_color(tpm_mono_buf dst, tpm_mono_buf src, unsigned sine_cycles);
+void tpm_sine_color(tpm_mono_buf dst, tpm_mono_buf src, unsigned cycles);
 void tpm_brightness(tpm_mono_buf dst, tpm_mono_buf src, float factor);
 void tpm_contrast(tpm_mono_buf dst, tpm_mono_buf src, float contrast);
 void tpm_colorize(tpm_color_buf dst, tpm_mono_buf src,

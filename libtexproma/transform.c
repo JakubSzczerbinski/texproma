@@ -1,5 +1,11 @@
 #include "libtexproma_private.h"
 
+void tpm_repeat(tpm_mono_buf dst, tpm_mono_buf src, unsigned nx, unsigned ny) {
+  for (int y = 0; y < TP_HEIGHT; y++)
+    for (int x = 0; x < TP_WIDTH; x++)
+      tpm_put_pixel(dst, x, y, tpm_get_pixel(src, x * nx, y * ny));
+}
+
 void tpm_flip(tpm_mono_buf dst, tpm_mono_buf src) {
   for (int y = 0; y < TP_HEIGHT; y++)
     for (int x = 0; x < TP_WIDTH; x++)
