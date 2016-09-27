@@ -74,7 +74,8 @@ env.Append(LIBS = ['texproma'])
 env.Append(LIBPATH = ['libtexproma'])
 env.Append(CPPPATH = ['libtexproma'])
 
-sources = ['main.c', 'cell.c', 'fn.c', 'dict.c', 'gui.c', 'interp.c']
+sources = ['main.c', 'cell.c', 'fn.c', 'dict.c',
+           'builtin.c', 'gui.c', 'interp.c']
 
 if not env['HAVE_STRNDUP']:
     sources += ['extra/strndup.c']

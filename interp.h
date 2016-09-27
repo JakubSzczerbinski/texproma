@@ -6,12 +6,32 @@
 #include "cell.h"
 #include "dict.h"
 
+#define STACK_TOP(stack)                                                \
+  TAILQ_LAST((stack), cell_list)
+
+#define STACK_POP(stack) ({                                             \
+    cell_t *tmp = TAILQ_LAST((stack), cell_list);                       \
+    TAILQ_REMOVE((stack), tmp, list);                                   \
+    tmp;                                                                \
+  })
+
+#define STACK_PUSH(stack, cell) ({                                      \
+    cell_t *tmp = (cell);                                               \
+    TAILQ_INSERT_TAIL((stack), tmp, list);                              \
+  })
+
+unsigned stack_depth(cell_list_t *stack);
+cell_t *stack_get_nth(cell_list_t *stack, unsigned n);
+
 /* TEXture PROcessing MAchine interpeter */
 
 typedef enum { TPMI_ERROR, TPMI_OK, TPMI_NEED_MORE } tpmi_status_t;
 typedef enum { TPMI_EVAL, TPMI_COMPILE, TPMI_DEFVAR, TPMI_FUNCREF } tpmi_mode_t;
 
 #define ERRMSG_LENGTH 128
+
+#define ERROR(interp, format, ...)                                      \
+  snprintf((interp)->errmsg, ERRMSG_LENGTH, format, ##__VA_ARGS__)
 
 typedef struct tpmi {
   cell_list_t stack;    /* working stack */
