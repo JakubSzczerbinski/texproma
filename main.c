@@ -34,7 +34,7 @@ static void line_append(char **dst, char *src) {
 
 static char *complete(const char *text, int state) {
   static unsigned len;
-  static word_t *match;
+  static entry_t *match;
   
   if (state == 0) {
     match = NULL;
@@ -44,8 +44,9 @@ static char *complete(const char *text, int state) {
       return NULL;
   }
 
-  if (dict_match(interp->words, &match, text))
-    return strdup(match->key);
+  while (dict_iter(interp->words, &match))
+    if (strncmp(match->key, text, len) == 0)
+      return strdup(match->key);
 
   return NULL;
 }
@@ -56,6 +57,7 @@ static char **texproma_completion(const char *text, int start, int end) {
 
 int main(int argc, char *argv[]) {
   interp = tpmi_new(); 
+  tpmi_compile(interp, "plasma 3 3 repeat 0x008000 0x80ff80 colorize");
 
   gui_init();
   gui_update(interp);

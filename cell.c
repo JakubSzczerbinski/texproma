@@ -56,6 +56,21 @@ void cell_print(cell_t *c) {
   free(str);
 }
 
+/* List of cell functions */
+
+unsigned clist_length(cell_list_t *clist) {
+  cell_t *c;
+  unsigned n = 0;
+  TAILQ_FOREACH(c, clist, list) n++;
+  return n;
+}
+
+void clist_reset(cell_list_t *clist) {
+  cell_t *c, *next;
+  TAILQ_FOREACH_SAFE(c, clist, list, next)
+    cell_delete(c);
+}
+
 /* Integer cell */
 
 cell_t *cell_int(int i) {
@@ -162,6 +177,7 @@ void ct_color_copy(cell_t *oc, cell_t *nc) {
 void ct_color_delete(cell_t *c) {
   for (int i = 0; i < 3; i++)
     free(COLOR(c, i));
+  free(c->ptr);
 }
 
 CT_DEF(CT_COLOR, "color-buf",

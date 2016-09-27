@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
 
+#include "word.h"
 #include "interp.h"
 
 static tpmi_status_t do_print(tpmi_t *interp) {
@@ -70,7 +72,7 @@ static tpmi_status_t do_pick(tpmi_t *interp) {
 }
 
 static tpmi_status_t do_depth(tpmi_t *interp) {
-  STACK_PUSH(&interp->stack, cell_int(stack_depth(&interp->stack)));
+  STACK_PUSH(&interp->stack, cell_int(clist_length(&interp->stack)));
   return TPMI_OK;
 }
 
@@ -87,7 +89,7 @@ static tpmi_status_t do_emit(tpmi_t *interp) {
 }
 
 static tpmi_status_t do_print_stack(tpmi_t *interp) {
-  unsigned n = stack_depth(&interp->stack);
+  unsigned n = clist_length(&interp->stack);
   cell_t *c;
   TAILQ_FOREACH(c, &interp->stack, list) {
     printf("[%u] ", --n);
@@ -97,29 +99,54 @@ static tpmi_status_t do_print_stack(tpmi_t *interp) {
   return TPMI_OK;
 }
 
+static void print_words(tpmi_t *interp, word_type_t type) {
+  entry_t *entry = NULL;
+
+  while (dict_iter(interp->words, &entry))
+    if (entry->word->type == type)
+      word_print(entry->key, entry->word);
+}
+
 static tpmi_status_t do_print_dict(tpmi_t *interp) {
-  print_dict(interp->words);
+  print_words(interp, WT_DEF);
+  print_words(interp, WT_VAR);
+  print_words(interp, WT_BUILTIN);
+  print_words(interp, WT_CFUNC);
   return TPMI_OK;
 }
 
+static entry_t *find_var(tpmi_t *interp, char *key) {
+  entry_t *entry = dict_find(interp->words, key);
+  if (entry != NULL)
+    return entry;
+  ERROR(interp, "'%s': no such variable", key);
+  return NULL;
+}
+
 static tpmi_status_t do_load(tpmi_t *interp) {
-  cell_t *key = STACK_POP(&interp->stack);
-  word_t *word = dict_find(interp->words, key->atom);
+  char *key = STACK_TOP(&interp->stack)->atom;
+  entry_t *entry = find_var(interp, key);
+  if (entry == NULL)
+    return TPMI_ERROR;
+
+  word_t *word = entry->word;
   if (word->var == NULL) {
-    ERROR(interp, "variable '%s' has no value", key->atom);
-    cell_delete(key);
+    ERROR(interp, "'%s': variable has not been initialized", key);
     return TPMI_ERROR;
   }
-  cell_delete(key);
+
+  cell_delete(STACK_POP(&interp->stack));
   STACK_PUSH(&interp->stack, cell_copy(word->var));
   return TPMI_OK;
 }
 
 static tpmi_status_t do_store(tpmi_t *interp) {
-  cell_t *key = STACK_POP(&interp->stack);
+  entry_t *entry = find_var(interp, STACK_TOP(&interp->stack)->atom);
+  if (entry == NULL)
+    return TPMI_ERROR;
+  cell_delete(STACK_POP(&interp->stack));
   cell_t *value = STACK_POP(&interp->stack);
-  word_t *word = dict_find(interp->words, key->atom);
-  cell_delete(key);
+  word_t *word = entry->word;
   if (word->var != NULL) {
     cell_swap(word->var, value);
     cell_delete(value);
@@ -212,24 +239,27 @@ static fn_ctor_t cfuncs[] = {
 void tpmi_init(tpmi_t *interp) {
   /* Initialize builtin words */
   for (fn_ctor_t *builtin = builtins; builtin->id; builtin++) {
-    word_t *word = dict_add(interp->words, builtin->id);
+    word_t *word = calloc(1, sizeof(word_t));
     word->type = WT_BUILTIN;
     word->func = new_fn(builtin);
     word->immediate = builtin->immediate;
+    dict_add(interp->words, builtin->id)->word = word;
   }
 
   /* Initialize C function calls */
   for (fn_ctor_t *cfunc = cfuncs; cfunc->id; cfunc++) {
-    word_t *word = dict_add(interp->words, cfunc->id);
+    word_t *word = calloc(1, sizeof(word_t));
     word->type = WT_CFUNC;
     word->func = new_fn(cfunc);
     word->immediate = cfunc->immediate;
+    dict_add(interp->words, cfunc->id)->word = word;
   }
 
   /* Add special variables */
-  word_t *state = dict_add(interp->words, "state");
+  word_t *state = calloc(1, sizeof(word_t));
   state->type = WT_VAR;
   state->var = cell_int(0);
+  dict_add(interp->words, "state")->word = state;
   interp->mode = (tpmi_mode_t *)&state->var->i;
 
   /* Compile initial program */

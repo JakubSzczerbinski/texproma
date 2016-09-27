@@ -20,7 +20,6 @@
     TAILQ_INSERT_TAIL((stack), tmp, list);                              \
   })
 
-unsigned stack_depth(cell_list_t *stack);
 cell_t *stack_get_nth(cell_list_t *stack, unsigned n);
 
 /* TEXture PROcessing MAchine interpeter */

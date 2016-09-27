@@ -60,4 +60,7 @@ cell_t *cell_string(const char *str);
 cell_t *cell_mono();
 cell_t *cell_color();
 
+unsigned clist_length(cell_list_t *clist);
+void clist_reset(cell_list_t *clist);
+
 #endif
