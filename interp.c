@@ -40,7 +40,7 @@ static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
       return eval_word(interp, entry);
   }
 
-  STACK_PUSH(&interp->stack, cell_copy(c));
+  stack_push(&interp->stack, cell_copy(c));
   return TPMI_OK;
 }
 
@@ -79,7 +79,7 @@ static bool check_func_args(tpmi_t *interp, entry_t *entry, arg_info_t *ai) {
               entry->key, j, arg->type->name, stk_arg->type->name);
         return false;
       }
-      stk_arg = CELL_NEXT(stk_arg);
+      stk_arg = clist_next(stk_arg);
       j++;
     }
   }
@@ -136,7 +136,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
           arg_value[i] = &arg->data;
         }
 
-        arg = CELL_NEXT(arg);
+        arg = clist_next(arg);
       } else {
         /* pass output arguments, but firstly push them on top of stack */
         cell_t *c = fn_arg->type->new();
@@ -154,7 +154,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
         else
           abort();
 
-        STACK_PUSH(&interp->stack, c);
+        stack_push(&interp->stack, c);
       }
     }
 
@@ -171,8 +171,8 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
 
     for (unsigned i = 0; i < ai.args; i++) {
       cell_t *c = arg;
-      arg = CELL_NEXT(arg);
-      CELL_REMOVE(&interp->stack, c);
+      arg = clist_next(arg);
+      clist_remove(&interp->stack, c);
       cell_delete(c);
     }
 
@@ -306,7 +306,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
               dict_add(interp->words, c.atom)->word->immediate) {
             status = eval_cell(interp, &c);
           } else {
-            STACK_PUSH(&interp->curr_word->value->head, cell_copy(&c));
+            stack_push(&interp->curr_word->value->head, cell_copy(&c));
             status = TPMI_NEED_MORE;
           }
         }
@@ -330,7 +330,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
 
         if (c.type == CT_ATOM)
           if (dict_add(interp->words, c.atom)->word->type == WT_CFUNC) {
-            STACK_PUSH(&interp->stack, cell_copy(&c));
+            stack_push(&interp->stack, cell_copy(&c));
             status = TPMI_OK;
           }
 

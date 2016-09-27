@@ -46,20 +46,23 @@ struct cell {
   TAILQ_ENTRY(cell) list;
 };
 
-#define CELL_PREV(cell)                         \
-  TAILQ_PREV(cell, cell_list, list)
-
-#define CELL_NEXT(cell)                         \
-  TAILQ_NEXT(cell, list)
-
-#define CELL_REMOVE(stack, cell)                \
-  TAILQ_REMOVE((stack), (cell), list);
-
 cell_t *cell_copy(cell_t *c);
 void cell_swap(cell_t *c1, cell_t *c2);
 void cell_delete(cell_t *c);
 char *cell_stringify(cell_t *c);
 void cell_print(cell_t *c);
+
+static inline cell_t *clist_prev(cell_t *c) {
+  return TAILQ_PREV(c, cell_list, list);
+}
+
+static inline cell_t *clist_next(cell_t *c) {
+  return TAILQ_NEXT(c, list);
+}
+
+static inline void clist_remove(cell_list_t *clist, cell_t *c) {
+  TAILQ_REMOVE(clist, c, list);
+}
 
 unsigned clist_length(cell_list_t *clist);
 void clist_reset(cell_list_t *clist);

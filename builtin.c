@@ -6,19 +6,19 @@
 #include "interp.h"
 
 static tpmi_status_t do_print(tpmi_t *interp) {
-  cell_t *c = STACK_TOP(&interp->stack);
+  cell_t *c = stack_top(&interp->stack);
   cell_print(c);
   putchar('\n');
   return TPMI_OK;
 }
 
 static tpmi_status_t do_drop(tpmi_t *interp) {
-  cell_delete(STACK_POP(&interp->stack));
+  cell_delete(stack_pop(&interp->stack));
   return TPMI_OK;
 }
 
 static tpmi_status_t do_roll(tpmi_t *interp) {
-  cell_t *top = STACK_TOP(&interp->stack);
+  cell_t *top = stack_top(&interp->stack);
 
   if (top->type != CT_INT) {
     ERROR(interp, "'roll' requires integer at the top of stack");
@@ -26,10 +26,10 @@ static tpmi_status_t do_roll(tpmi_t *interp) {
   }
   
   unsigned n = top->i;
-  cell_t *arg = CELL_PREV(top);
+  cell_t *arg = clist_prev(top);
 
   while (arg && (n-- > 0))
-    arg = CELL_PREV(arg);
+    arg = clist_prev(arg);
 
   if (arg == NULL) {
     ERROR(interp,
@@ -37,16 +37,16 @@ static tpmi_status_t do_roll(tpmi_t *interp) {
     return TPMI_ERROR;
   }
 
-  CELL_REMOVE(&interp->stack, top);
-  CELL_REMOVE(&interp->stack, arg);
-  STACK_PUSH(&interp->stack, arg);
+  clist_remove(&interp->stack, top);
+  clist_remove(&interp->stack, arg);
+  stack_push(&interp->stack, arg);
   cell_delete(top);
 
   return TPMI_OK;
 }
 
 static tpmi_status_t do_pick(tpmi_t *interp) {
-  cell_t *top = STACK_TOP(&interp->stack);
+  cell_t *top = stack_top(&interp->stack);
 
   if (top->type != CT_INT) {
     ERROR(interp, "'pick' requires integer at the top of stack");
@@ -54,10 +54,10 @@ static tpmi_status_t do_pick(tpmi_t *interp) {
   }
   
   unsigned n = top->i;
-  cell_t *arg = CELL_PREV(top);
+  cell_t *arg = clist_prev(top);
 
   while (arg && (n-- > 0))
-    arg = CELL_PREV(arg);
+    arg = clist_prev(arg);
 
   if (arg == NULL) {
     ERROR(interp,
@@ -65,8 +65,8 @@ static tpmi_status_t do_pick(tpmi_t *interp) {
     return TPMI_ERROR;
   }
 
-  CELL_REMOVE(&interp->stack, top);
-  STACK_PUSH(&interp->stack, cell_copy(arg));
+  clist_remove(&interp->stack, top);
+  stack_push(&interp->stack, cell_copy(arg));
   cell_delete(top);
 
   return TPMI_OK;
@@ -75,12 +75,12 @@ static tpmi_status_t do_pick(tpmi_t *interp) {
 static tpmi_status_t do_depth(tpmi_t *interp) {
   cell_t *c = CT_INT->new();
   c->i = clist_length(&interp->stack);
-  STACK_PUSH(&interp->stack, c);
+  stack_push(&interp->stack, c);
   return TPMI_OK;
 }
 
 static tpmi_status_t do_emit(tpmi_t *interp) {
-  cell_t *top = STACK_TOP(&interp->stack);
+  cell_t *top = stack_top(&interp->stack);
 
   if (top->type != CT_INT) {
     ERROR(interp, "'emit' requires integer at the top of stack");
@@ -127,7 +127,7 @@ static entry_t *find_var(tpmi_t *interp, char *key) {
 }
 
 static tpmi_status_t do_load(tpmi_t *interp) {
-  char *key = STACK_TOP(&interp->stack)->atom;
+  char *key = stack_top(&interp->stack)->atom;
   entry_t *entry = find_var(interp, key);
   if (entry == NULL)
     return TPMI_ERROR;
@@ -138,17 +138,17 @@ static tpmi_status_t do_load(tpmi_t *interp) {
     return TPMI_ERROR;
   }
 
-  cell_delete(STACK_POP(&interp->stack));
-  STACK_PUSH(&interp->stack, cell_copy(word->value));
+  cell_delete(stack_pop(&interp->stack));
+  stack_push(&interp->stack, cell_copy(word->value));
   return TPMI_OK;
 }
 
 static tpmi_status_t do_store(tpmi_t *interp) {
-  entry_t *entry = find_var(interp, STACK_TOP(&interp->stack)->atom);
+  entry_t *entry = find_var(interp, stack_top(&interp->stack)->atom);
   if (entry == NULL)
     return TPMI_ERROR;
-  cell_delete(STACK_POP(&interp->stack));
-  cell_t *value = STACK_POP(&interp->stack);
+  cell_delete(stack_pop(&interp->stack));
+  cell_t *value = stack_pop(&interp->stack);
   word_t *word = entry->word;
   if (word->value != NULL) {
     cell_swap(word->value, value);
@@ -160,12 +160,12 @@ static tpmi_status_t do_store(tpmi_t *interp) {
 }
 
 static tpmi_status_t do_mono(tpmi_t *interp) {
-  STACK_PUSH(&interp->stack, CT_MONO->new());
+  stack_push(&interp->stack, CT_MONO->new());
   return TPMI_OK;
 }
 
 static tpmi_status_t do_color(tpmi_t *interp) {
-  STACK_PUSH(&interp->stack, CT_COLOR->new());
+  stack_push(&interp->stack, CT_COLOR->new());
   return TPMI_OK;
 }
 

@@ -6,19 +6,19 @@
 #include "cell.h"
 #include "dict.h"
 
-#define STACK_TOP(stack)                                                \
-  TAILQ_LAST((stack), cell_list)
+static inline cell_t *stack_top(cell_list_t *stack) {
+  return TAILQ_LAST(stack, cell_list);
+}
 
-#define STACK_POP(stack) ({                                             \
-    cell_t *tmp = TAILQ_LAST((stack), cell_list);                       \
-    TAILQ_REMOVE((stack), tmp, list);                                   \
-    tmp;                                                                \
-  })
+static inline cell_t *stack_pop(cell_list_t *stack) {
+  cell_t *c = TAILQ_LAST(stack, cell_list);
+  TAILQ_REMOVE(stack, c, list);
+  return c;
+}
 
-#define STACK_PUSH(stack, cell) ({                                      \
-    cell_t *tmp = (cell);                                               \
-    TAILQ_INSERT_TAIL((stack), tmp, list);                              \
-  })
+static inline void stack_push(cell_list_t *stack, cell_t *c) {
+  TAILQ_INSERT_TAIL(stack, c, list);
+}
 
 cell_t *stack_get_nth(cell_list_t *stack, unsigned n);
 
