@@ -73,7 +73,9 @@ static tpmi_status_t do_pick(tpmi_t *interp) {
 }
 
 static tpmi_status_t do_depth(tpmi_t *interp) {
-  STACK_PUSH(&interp->stack, cell_int(clist_length(&interp->stack)));
+  cell_t *c = CT_INT->new();
+  c->i = clist_length(&interp->stack);
+  STACK_PUSH(&interp->stack, c);
   return TPMI_OK;
 }
 
@@ -158,12 +160,12 @@ static tpmi_status_t do_store(tpmi_t *interp) {
 }
 
 static tpmi_status_t do_mono(tpmi_t *interp) {
-  STACK_PUSH(&interp->stack, cell_mono());
+  STACK_PUSH(&interp->stack, CT_MONO->new());
   return TPMI_OK;
 }
 
 static tpmi_status_t do_color(tpmi_t *interp) {
-  STACK_PUSH(&interp->stack, cell_color());
+  STACK_PUSH(&interp->stack, CT_COLOR->new());
   return TPMI_OK;
 }
 
@@ -242,7 +244,8 @@ void tpmi_init(tpmi_t *interp) {
   for (fn_ctor_t *builtin = builtins; builtin->id; builtin++) {
     word_t *word = calloc(1, sizeof(word_t));
     word->type = WT_BUILTIN;
-    word->value = cell_fn(new_fn(builtin));
+    word->value = CT_FN->new();
+    word->value->fn = new_fn(builtin);
     word->immediate = builtin->immediate;
     dict_add(interp->words, builtin->id)->word = word;
   }
@@ -251,7 +254,8 @@ void tpmi_init(tpmi_t *interp) {
   for (fn_ctor_t *cfunc = cfuncs; cfunc->id; cfunc++) {
     word_t *word = calloc(1, sizeof(word_t));
     word->type = WT_CFUNC;
-    word->value = cell_fn(new_fn(cfunc));
+    word->value = CT_FN->new();
+    word->value->fn = new_fn(cfunc);
     word->immediate = cfunc->immediate;
     dict_add(interp->words, cfunc->id)->word = word;
   }
@@ -259,7 +263,7 @@ void tpmi_init(tpmi_t *interp) {
   /* Add special variables */
   word_t *state = calloc(1, sizeof(word_t));
   state->type = WT_VAR;
-  state->value = cell_int(0);
+  state->value = CT_INT->new();
   dict_add(interp->words, "state")->word = state;
   interp->mode = (tpmi_mode_t *)&state->value->i;
 

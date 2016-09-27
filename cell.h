@@ -7,12 +7,14 @@
 
 typedef struct cell cell_t;
 
+typedef cell_t* (*cell_new_fn)();
 typedef void (*cell_copy_fn)(cell_t *from, cell_t *to);
 typedef void (*cell_stringify_fn)(cell_t *c, char *buf, unsigned len);
 typedef void (*cell_delete_fn)(cell_t *c);
 
 typedef struct cell_type {
   const char *name;
+  cell_new_fn new;
   cell_copy_fn copy;
   cell_stringify_fn stringify;
   cell_delete_fn delete;
@@ -58,15 +60,6 @@ void cell_swap(cell_t *c1, cell_t *c2);
 void cell_delete(cell_t *c);
 char *cell_stringify(cell_t *c);
 void cell_print(cell_t *c);
-
-cell_t *cell_int(int i);
-cell_t *cell_float(float f);
-cell_t *cell_atom(const char *atom);
-cell_t *cell_string(const char *str);
-cell_t *cell_list();
-cell_t *cell_fn(fn_t *fn);
-cell_t *cell_mono();
-cell_t *cell_color();
 
 unsigned clist_length(cell_list_t *clist);
 void clist_reset(cell_list_t *clist);

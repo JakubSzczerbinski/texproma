@@ -139,25 +139,20 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
         arg = CELL_NEXT(arg);
       } else {
         /* pass output arguments, but firstly push them on top of stack */
-        cell_t *c;
+        cell_t *c = fn_arg->type->new();
 
         arg_ctype[i] = &ffi_type_pointer;
 
-        if (fn_arg->type == CT_INT) {
-          c = cell_int(0);
+        if (fn_arg->type == CT_INT)
           arg_value[i] = &c->i;
-        } else if (fn_arg->type == CT_FLOAT) {
-          c = cell_float(0.0);
+        else if (fn_arg->type == CT_FLOAT)
           arg_value[i] = &c->f;
-        } else if (fn_arg->type == CT_MONO) {
-          c = cell_mono();
+        else if (fn_arg->type == CT_MONO)
           arg_value[i] = &c->data;
-        } else if (fn_arg->type == CT_COLOR) {
-          c = cell_color();
+        else if (fn_arg->type == CT_COLOR)
           arg_value[i] = &c->data;
-        } else {
+        else
           abort();
-        }
 
         STACK_PUSH(&interp->stack, c);
       }
@@ -294,7 +289,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
             if (entry->word == NULL) {
               word_t *word = calloc(1, sizeof(word_t));
               word->type = WT_DEF;
-              word->value = cell_list();
+              word->value = CT_LIST->new();
               word->immediate = false;
               interp->curr_word = entry->word = word;
               status = TPMI_NEED_MORE;

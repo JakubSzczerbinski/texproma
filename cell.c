@@ -6,13 +6,13 @@
 #include "cell.h"
 #include "libtexproma.h"
 
-#define CT_DEF(type, name, copy, stringify, delete)                     \
-  const cell_type_t type[1] = {{(name), (copy), (stringify), (delete)}}
+#define CT_DEF(type, name, new, copy, stringify, delete)        \
+  const cell_type_t type[1] = {{                                \
+    (name), (new), (copy), (stringify), (delete) }}
 
-cell_t *new_cell(const cell_type_t *type, void *value) {
+static cell_t *new_cell(const cell_type_t *type) {
   cell_t *c = calloc(1, sizeof(cell_t));
   c->type = type;
-  c->data = value;
   return c;
 }
 
@@ -73,11 +73,8 @@ void clist_reset(cell_list_t *clist) {
 
 /* Integer cell */
 
-cell_t *cell_int(int i) {
-  cell_t *c = calloc(1, sizeof(cell_t));
-  c->type = CT_INT;
-  c->i = i;
-  return c;
+static cell_t *ct_int_new() {
+  return new_cell(CT_INT);
 }
 
 static void ct_int_stringify(cell_t *c, char *str, unsigned len) {
@@ -85,15 +82,12 @@ static void ct_int_stringify(cell_t *c, char *str, unsigned len) {
 }
 
 CT_DEF(CT_INT, "integer",
-       NULL, ct_int_stringify, NULL);
+      ct_int_new,  NULL, ct_int_stringify, NULL);
 
 /* Float cell */
 
-cell_t *cell_float(float f) {
-  cell_t *c = calloc(1, sizeof(cell_t));
-  c->type = CT_FLOAT;
-  c->f = f;
-  return c;
+static cell_t *ct_float_new() {
+  return new_cell(CT_FLOAT);
 }
 
 static void ct_float_stringify(cell_t *c, char *str, unsigned len) {
@@ -101,12 +95,12 @@ static void ct_float_stringify(cell_t *c, char *str, unsigned len) {
 }
 
 CT_DEF(CT_FLOAT, "float",
-       NULL, ct_float_stringify, NULL);
+       ct_float_new, NULL, ct_float_stringify, NULL);
 
 /* Atom cell */
 
-cell_t *cell_atom(const char *atom) {
-  return new_cell(CT_ATOM, strdup(atom));
+static cell_t *ct_atom_new() {
+  return new_cell(CT_ATOM);
 }
 
 static void ct_atom_copy(cell_t *oc, cell_t *nc) {
@@ -122,12 +116,12 @@ static void ct_atom_delete(cell_t *c) {
 }
 
 CT_DEF(CT_ATOM, "atom",
-       ct_atom_copy, ct_atom_stringify, ct_atom_delete);
+       ct_atom_new, ct_atom_copy, ct_atom_stringify, ct_atom_delete);
 
 /* String cell */
 
-cell_t *cell_string(const char *str) {
-  return new_cell(CT_STRING, strdup(str));
+static cell_t *ct_string_new() {
+  return new_cell(CT_STRING);
 }
 
 static void ct_string_stringify(cell_t *c, char *str, unsigned len) {
@@ -135,13 +129,12 @@ static void ct_string_stringify(cell_t *c, char *str, unsigned len) {
 }
 
 CT_DEF(CT_STRING, "string",
-       ct_atom_copy, ct_string_stringify, ct_atom_delete);
+       ct_string_new, ct_atom_copy, ct_string_stringify, ct_atom_delete);
 
 /* List head cell */
 
-cell_t *cell_list() {
-  cell_t *c = calloc(1, sizeof(cell_t));
-  c->type = CT_LIST;
+static cell_t *ct_list_new() {
+  cell_t *c = new_cell(CT_LIST);
   TAILQ_INIT(&c->head);
   return c;
 }
@@ -162,15 +155,12 @@ static void ct_list_delete(cell_t *c) {
 }
 
 CT_DEF(CT_LIST, "list",
-       ct_list_copy, ct_generic_stringify, ct_list_delete);
+       ct_list_new, ct_list_copy, ct_generic_stringify, ct_list_delete);
 
 /* Function cell */
 
-cell_t *cell_fn(fn_t *fn) {
-  cell_t *c = calloc(1, sizeof(cell_t));
-  c->type = CT_FN;
-  c->fn = fn;
-  return c;
+static cell_t *ct_fn_new() {
+  return new_cell(CT_FN);
 }
 
 static void ct_fn_copy(cell_t *oc, cell_t *nc) {
@@ -184,13 +174,15 @@ static void ct_fn_delete(cell_t *c) {
 }
 
 CT_DEF(CT_FN, "function",
-       ct_fn_copy, ct_generic_stringify, ct_fn_delete);
+       ct_fn_new, ct_fn_copy, ct_generic_stringify, ct_fn_delete);
 
 
 /* Mono image cell */
 
-cell_t *cell_mono() {
-  return new_cell(CT_MONO, calloc(1, TP_WIDTH * TP_HEIGHT));
+static cell_t *ct_mono_new() {
+  cell_t *c = new_cell(CT_MONO);
+  c->data = calloc(1, TP_WIDTH * TP_HEIGHT);
+  return c;
 }
 
 static void ct_mono_copy(cell_t *oc, cell_t *nc) {
@@ -199,14 +191,15 @@ static void ct_mono_copy(cell_t *oc, cell_t *nc) {
 }
 
 CT_DEF(CT_MONO, "mono-buf",
-       ct_mono_copy, ct_generic_stringify, ct_atom_delete);
+       ct_mono_new, ct_mono_copy, ct_generic_stringify, ct_atom_delete);
 
 /* Color image cell */
 
 #define COLOR(c, i) (((uint8_t **)(c)->data)[i])
 
-cell_t *cell_color() {
-  cell_t *c = new_cell(CT_COLOR, calloc(3, sizeof(tpm_mono_buf)));
+static cell_t *ct_color_new() {
+  cell_t *c = new_cell(CT_COLOR);
+  c->data = calloc(3, sizeof(tpm_mono_buf));
   for (int i = 0; i < 3; i++)
     COLOR(c, i) = calloc(1, TP_WIDTH * TP_HEIGHT);
   return c;
@@ -227,4 +220,4 @@ void ct_color_delete(cell_t *c) {
 }
 
 CT_DEF(CT_COLOR, "color-buf",
-       ct_color_copy, ct_generic_stringify, ct_color_delete);
+       ct_color_new, ct_color_copy, ct_generic_stringify, ct_color_delete);
