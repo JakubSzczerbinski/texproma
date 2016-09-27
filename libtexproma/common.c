@@ -1,13 +1,5 @@
 #include "libtexproma_private.h"
 
-static uint8_t tpm_clampi(int i) {
-  if (i < 0)
-    return 0;
-  if (i > 255)
-    return 255;
-  return i;
-}
-
 int tpm_get_pixel(tpm_mono_buf buf, int x, int y) {
   x &= (TP_WIDTH - 1);
   y &= (TP_HEIGHT - 1);
@@ -19,27 +11,7 @@ void tpm_put_pixel(tpm_mono_buf buf, int x, int y, int c) {
   x &= (TP_WIDTH - 1);
   y &= (TP_HEIGHT - 1);
 
-  buf[y * TP_WIDTH + x] = tpm_clampi(c);
-}
-
-colori tpm_get_color_pixel(tpm_color_buf buf, int x, int y) {
-  x &= (TP_WIDTH - 1);
-  y &= (TP_HEIGHT - 1);
-
-  unsigned i = y * TP_WIDTH + x;
-
-  return (colori){buf[i].r, buf[i].g, buf[i].b};
-}
-
-void tpm_put_color_pixel(tpm_color_buf buf, int x, int y, colori c) {
-  x &= (TP_WIDTH - 1);
-  y &= (TP_HEIGHT - 1);
-
-  unsigned i = y * TP_WIDTH + x;
-
-  buf[i].r = tpm_clampi(c.r);
-  buf[i].g = tpm_clampi(c.g);
-  buf[i].b = tpm_clampi(c.b);
+  buf[y * TP_WIDTH + x] = constrain(c, 0, 255);
 }
 
 /* https://en.wikipedia.org/wiki/Bilinear_filtering */

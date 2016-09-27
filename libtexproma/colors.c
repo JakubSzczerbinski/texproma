@@ -8,9 +8,9 @@ void tpm_hsv_modify(tpm_color_buf dst, tpm_color_buf src,
 
   for (int y = 0; y < TP_HEIGHT; y++) {
     for (int x = 0; x < TP_WIDTH; x++) {
-      colori c = tpm_get_color_pixel(src, x, y);
-
-      float r = c.r, g = c.g, b = c.b;
+      float r = tpm_get_pixel(src[0], x, y);
+      float g = tpm_get_pixel(src[1], x, y);
+      float b = tpm_get_pixel(src[2], x, y);
       float h, s, v;
 
       tpm_rgb_to_hsv(r, g, b, &h, &s, &v);
@@ -24,9 +24,9 @@ void tpm_hsv_modify(tpm_color_buf dst, tpm_color_buf src,
 
       tpm_hsv_to_rgb(&r, &g, &b, h, s, v);
 
-      c = (colori){.r = r, .g = g, .b = b};
-
-      tpm_put_color_pixel(dst, x, y, c);
+      tpm_put_pixel(dst[0], x, y, r);
+      tpm_put_pixel(dst[1], x, y, g);
+      tpm_put_pixel(dst[2], x, y, b);
     }
   }
 }
@@ -95,13 +95,9 @@ void tpm_colorize(tpm_color_buf dst, tpm_mono_buf src, unsigned c1, unsigned c2)
     for (int x = 0; x < TP_WIDTH; x++) {
       float p = r * tpm_get_pixel(src, x, y);
 
-      colori c = {
-        .r = lerp(R(c1), R(c2), p),
-        .g = lerp(G(c1), G(c2), p),
-        .b = lerp(B(c1), B(c2), p)
-      };
-
-      tpm_put_color_pixel(dst, x, y, c);
+      tpm_put_pixel(dst[0], x, y, lerp(R(c1), R(c2), p));
+      tpm_put_pixel(dst[1], x, y, lerp(G(c1), G(c2), p));
+      tpm_put_pixel(dst[2], x, y, lerp(B(c1), B(c2), p));
     }
   }
 }
@@ -109,8 +105,10 @@ void tpm_colorize(tpm_color_buf dst, tpm_mono_buf src, unsigned c1, unsigned c2)
 void tpm_grayscale(tpm_mono_buf dst, tpm_color_buf src) {
   for (int y = 0; y < TP_HEIGHT; y++) {
     for (int x = 0; x < TP_WIDTH; x++) {
-      colori c = tpm_get_color_pixel(src, x, y);
-      tpm_put_pixel(dst, x, y, 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b);
+      int r = tpm_get_pixel(src[0], x, y);
+      int g = tpm_get_pixel(src[1], x, y);
+      int b = tpm_get_pixel(src[2], x, y);
+      tpm_put_pixel(dst, x, y, 0.2126f * r + 0.7152f * g + 0.0722f * b);
     }
   }
 }

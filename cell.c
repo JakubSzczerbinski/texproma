@@ -43,7 +43,9 @@ cell_t *cell_mono() {
 cell_t *cell_color() {
   cell_t *c = calloc(1, sizeof(cell_t));
   c->type = CT_COLOR;
-  c->color = calloc(1, TP_WIDTH * TP_HEIGHT * sizeof(color_t));
+  c->color = calloc(3, sizeof(tpm_mono_buf));
+  for (int i = 0; i < 3; i++)
+    c->color[i] = calloc(1, TP_WIDTH * TP_HEIGHT);
   return c;
 }
 
@@ -58,8 +60,11 @@ cell_t *cell_dup(cell_t *c) {
     nc->mono = malloc(TP_WIDTH * TP_HEIGHT);
     memcpy(nc->mono, c->mono, TP_WIDTH * TP_HEIGHT);
   } else if (nc->type == CT_COLOR) {
-    nc->color = malloc(TP_WIDTH * TP_HEIGHT * sizeof(color_t));
-    memcpy(nc->color, c->color, TP_WIDTH * TP_HEIGHT * sizeof(color_t));
+    nc->color = calloc(3, sizeof(tpm_mono_buf));
+    for (int i = 0; i < 3; i++) {
+      nc->color[i] = malloc(TP_WIDTH * TP_HEIGHT);
+      memcpy(nc->color[i], c->color[i], TP_WIDTH * TP_HEIGHT);
+    }
   }
 
   return nc;
@@ -80,8 +85,11 @@ void cell_delete(cell_t *c) {
     free((void *)c->str);
   else if (c->type == CT_MONO)
     free(c->mono);
-  else if (c->type == CT_COLOR)
+  else if (c->type == CT_COLOR) {
+    for (int i = 0; i < 3; i++)
+      free(c->color[i]);
     free(c->color);
+  }
   free(c);
 }
 

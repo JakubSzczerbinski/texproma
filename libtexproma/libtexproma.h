@@ -6,12 +6,8 @@
 #define TP_WIDTH 256
 #define TP_HEIGHT 256
 
-typedef struct {
-  uint8_t r, g, b;
-} color_t;
-
 typedef uint8_t *tpm_mono_buf;
-typedef color_t *tpm_color_buf;
+typedef uint8_t **tpm_color_buf;
 
 void tpm_explode(tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b,
                  tpm_color_buf c);

@@ -132,8 +132,10 @@ void gui_update(tpmi_t *interp) {
           }
         } else {
           for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
-            color_t p = c->color[i];
-            pixels[i] = (RGBA){.r = p.r, .g = p.g, .b = p.b};
+            uint8_t r = c->color[0][i];
+            uint8_t g = c->color[1][i];
+            uint8_t b = c->color[2][i];
+            pixels[i] = (RGBA){.r = r, .g = g, .b = b};
           }
         }
 

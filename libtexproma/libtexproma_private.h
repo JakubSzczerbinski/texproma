@@ -21,8 +21,6 @@ typedef struct {
 
 int tpm_get_pixel(tpm_mono_buf buf, int x, int y);
 void tpm_put_pixel(tpm_mono_buf buf, int x, int y, int c);
-colori tpm_get_color_pixel(tpm_color_buf buf, int x, int y);
-void tpm_put_color_pixel(tpm_color_buf buf, int x, int y, colori c);
 int tpm_get_filtered_pixel(tpm_mono_buf buf, float x, float y);
 
 uint32_t tpm_random(uint32_t *seed);

@@ -27,7 +27,7 @@ static void tpm_buf_save(void *src, unsigned type, char *filename) {
   png_write_info(png, info);
 
   int row_size = TP_WIDTH *
-    ((type == PNG_COLOR_TYPE_RGB) ? sizeof(color_t) : sizeof(uint8_t));
+    ((type == PNG_COLOR_TYPE_RGB) ? sizeof(png_color) : sizeof(uint8_t));
 
   for (int i = 0; i < TP_HEIGHT; i++)
 		png_write_row(png, src + i * row_size);
@@ -44,5 +44,12 @@ void tpm_mono_buf_save(tpm_mono_buf src, char *filename) {
 }
 
 void tpm_color_buf_save(tpm_color_buf src, char *filename) {
-  tpm_buf_save((void *)src, PNG_COLOR_TYPE_RGB, filename);
+  png_color *tmp = malloc(TP_WIDTH * TP_HEIGHT * sizeof(png_color));
+
+  for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++)
+    tmp[i] = (png_color){src[0][i], src[1][i], src[2][i]};
+
+  tpm_buf_save(tmp, PNG_COLOR_TYPE_RGB, filename);
+
+  free(tmp);
 }

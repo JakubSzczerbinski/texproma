@@ -7,16 +7,19 @@ void tpm_set(tpm_mono_buf dst, int value) {
 void tpm_explode(tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b,
                  tpm_color_buf c) {
   for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
-    r[i] = c[i].r;
-    g[i] = c[i].g;
-    b[i] = c[i].b;
+    r[i] = c[0][i];
+    g[i] = c[1][i];
+    b[i] = c[2][i];
   }
 }
 
 void tpm_implode(tpm_color_buf c, 
                  tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b) {
-  for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++)
-    c[i] = (color_t){r[i], g[i], b[i]};
+  for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
+    c[0][i] = r[i];
+    c[1][i] = g[i];
+    c[2][i] = b[i];
+  }
 }
 
 void tpm_add(tpm_mono_buf dst, tpm_mono_buf src1, tpm_mono_buf src2) {
