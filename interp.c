@@ -94,7 +94,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
     arg_info_t ai;
     if (!check_func_args(interp, entry, &ai))
       return TPMI_ERROR;
-    return ((tpmi_fn_t)word->value->fn)(interp);
+    return ((tpmi_fn_t)word->value->fn->ptr)(interp);
   }
 
   if (word->type == WT_DEF) {
@@ -164,7 +164,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
     assert(ffi_prep_cif(&cif, FFI_DEFAULT_ABI,
                         n, &ffi_type_void, arg_ctype) == FFI_OK);
 
-    ffi_call(&cif, FFI_FN(fn->fn), &result, arg_value);
+    ffi_call(&cif, FFI_FN(fn->ptr), &result, arg_value);
 
     /* remove input arguments from stack */
     arg = ai.first;

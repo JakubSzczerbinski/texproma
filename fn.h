@@ -13,14 +13,14 @@ typedef struct {
 } fn_arg_t;
 
 typedef struct {
-  void (*fn)();
+  void (*ptr)();
   unsigned count;
   fn_arg_t args[0];
 } fn_t;
 
 typedef struct {
   const char *id;
-  void *fn;
+  void *ptr;
   const char *sig;
   bool immediate;
 } fn_ctor_t;

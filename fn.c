@@ -28,7 +28,7 @@ fn_t *new_fn(fn_ctor_t *ctor) {
   unsigned n = strlen(ctor->sig);
   fn_t *fn = calloc(1, sizeof(fn_t) + n * sizeof(fn_arg_t));
 
-  fn->fn = ctor->fn;
+  fn->ptr = ctor->ptr;
   fn->count = n;
 
   for (unsigned i = 0; i < n; i++) {
