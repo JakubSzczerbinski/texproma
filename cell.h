@@ -1,31 +1,40 @@
+
 #ifndef __CELL_H__
 #define __CELL_H__
 
 #include "tailq.h"
 #include "libtexproma.h"
 
-typedef enum { 
-  CT_ANY = '?',
-  CT_INT = 'i',
-  CT_FLOAT = 'f', 
-  CT_ATOM = 'a',
-  CT_STRING = 's',
-  CT_MONO = 'm', 
-  CT_COLOR = 'c'
+typedef struct cell cell_t;
+
+typedef void (*cell_copy_fn)(cell_t *from, cell_t *to);
+typedef void (*cell_stringify_fn)(cell_t *c, char *buf, unsigned len);
+typedef void (*cell_delete_fn)(cell_t *c);
+
+typedef struct cell_type {
+  const char *name;
+  cell_copy_fn copy;
+  cell_stringify_fn stringify;
+  cell_delete_fn delete;
 } cell_type_t;
 
-typedef struct cell {
-  cell_type_t type;
+extern const cell_type_t CT_INT[1];
+extern const cell_type_t CT_FLOAT[1];
+extern const cell_type_t CT_ATOM[1];
+extern const cell_type_t CT_STRING[1];
+extern const cell_type_t CT_MONO[1];
+extern const cell_type_t CT_COLOR[1];
+
+struct cell {
+  const cell_type_t *type;
   union {
     int i;
     float f;
-    const char *atom;
-    const char *str;
-    tpm_mono_buf mono;
-    tpm_color_buf color;
+    char *atom;
+    void *ptr;
   };
   TAILQ_ENTRY(cell) list;
-} cell_t;
+};
 
 typedef TAILQ_HEAD(cell_list, cell) cell_list_t;
 
@@ -38,18 +47,17 @@ typedef TAILQ_HEAD(cell_list, cell) cell_list_t;
 #define CELL_REMOVE(stack, cell)                \
   TAILQ_REMOVE((stack), (cell), list);
 
+cell_t *cell_copy(cell_t *c);
+void cell_swap(cell_t *c1, cell_t *c2);
+void cell_delete(cell_t *c);
+char *cell_stringify(cell_t *c);
+void cell_print(cell_t *c);
+
 cell_t *cell_int(int i);
 cell_t *cell_float(float f);
 cell_t *cell_atom(const char *atom);
 cell_t *cell_string(const char *str);
 cell_t *cell_mono();
 cell_t *cell_color();
-
-cell_t *cell_dup(cell_t *c);
-void cell_swap(cell_t *c1, cell_t *c2);
-void cell_delete(cell_t *c);
-
-char *stringify_cell(cell_t *c);
-void print_cell(cell_t *c);
 
 #endif

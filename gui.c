@@ -127,14 +127,14 @@ void gui_update(tpmi_t *interp) {
 
         if (c->type == CT_MONO) {
           for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
-            uint8_t p = c->mono[i];
+            uint8_t p = ((uint8_t *)c->ptr)[i];
             pixels[i] = (RGBA){.r = p, .g = p, .b = p};
           }
         } else {
           for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
-            uint8_t r = c->color[0][i];
-            uint8_t g = c->color[1][i];
-            uint8_t b = c->color[2][i];
+            uint8_t r = ((uint8_t **)c->ptr)[0][i];
+            uint8_t g = ((uint8_t **)c->ptr)[1][i];
+            uint8_t b = ((uint8_t **)c->ptr)[2][i];
             pixels[i] = (RGBA){.r = r, .g = g, .b = b};
           }
         }
@@ -150,7 +150,7 @@ void gui_update(tpmi_t *interp) {
     }
 
     if (n < stkcnt) {
-      char *cstr = stringify_cell(c);
+      char *cstr = cell_stringify(c);
       snprintf(str, sizeof(str), "[%d] %s", n, cstr);
       SDL_Rect dst = { 0, (n + 1) * FONT_H, TP_WIDTH, FONT_H };
       RenderText(renderer, font16, str, &dst, false);

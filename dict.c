@@ -192,18 +192,18 @@ static void print_words(dict_t *dict, word_type_t type) {
 
     if (word->type == WT_VAR) {
       printf(MAGENTA "%s" RESET " = " BOLD, word->key);
-      print_cell(word->var);
+      cell_print(word->var);
       printf(RESET);
     } else if (word->type == WT_DEF) {
       cell_t *c;
       printf(BOLD ": %s ", word->key);
       TAILQ_FOREACH(c, &word->def, list)
-        print_cell(c);
+        cell_print(c);
       printf(";" RESET);
     } else if (word->type == WT_BUILTIN) {
-      printf(BLUE "%s" RESET BOLD " (%s)" RESET, word->key, word->func.sig);
+      printf(BLUE "%s" RESET " : ", word->key); fn_sig_print(word->func);
     } else if (word->type == WT_CFUNC) {
-      printf(GREEN "%s" RESET BOLD " (%s)" RESET, word->key, word->func.sig);
+      printf(GREEN "%s" RESET " : ", word->key); fn_sig_print(word->func);
     } else {
       abort();
     }

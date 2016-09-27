@@ -34,9 +34,23 @@ static unsigned stack_depth(cell_list_t *stack) {
   return n;
 }
 
+static cell_t *stack_get_nth(cell_list_t *stack, unsigned n) {
+  if (TAILQ_EMPTY(stack))
+    return NULL;
+
+  cell_t *c;
+  TAILQ_FOREACH_REVERSE(c, stack, cell_list, list) {
+    if (n == 0)
+      return c;
+    n--;
+  }
+
+  return NULL;
+}
+
 static tpmi_status_t do_print(tpmi_t *interp) {
   cell_t *c = STACK_TOP(&interp->stack);
-  print_cell(c);
+  cell_print(c);
   putchar('\n');
   return TPMI_OK;
 }
@@ -95,7 +109,7 @@ static tpmi_status_t do_pick(tpmi_t *interp) {
   }
 
   CELL_REMOVE(&interp->stack, top);
-  STACK_PUSH(&interp->stack, cell_dup(arg));
+  STACK_PUSH(&interp->stack, cell_copy(arg));
   cell_delete(top);
 
   return TPMI_OK;
@@ -123,7 +137,7 @@ static tpmi_status_t do_print_stack(tpmi_t *interp) {
   cell_t *c;
   TAILQ_FOREACH(c, &interp->stack, list) {
     printf("[%u] ", --n);
-    print_cell(c);
+    cell_print(c);
     putchar('\n');
   }
   return TPMI_OK;
@@ -143,7 +157,7 @@ static tpmi_status_t do_load(tpmi_t *interp) {
     return TPMI_ERROR;
   }
   cell_delete(key);
-  STACK_PUSH(&interp->stack, cell_dup(word->var));
+  STACK_PUSH(&interp->stack, cell_copy(word->var));
   return TPMI_OK;
 }
 
@@ -175,7 +189,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word);
 
 static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
   if (c->type == CT_ATOM) {
-    word_t *word = dict_find(interp->words, c->atom);
+    word_t *word = dict_find(interp->words, (char *)c->ptr);
 
     if (word == NULL) {
       ERROR(interp, "unknown identifier: '%s'", c->atom);
@@ -186,7 +200,7 @@ static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
       return eval_word(interp, word);
   }
 
-  STACK_PUSH(&interp->stack, cell_dup(c));
+  STACK_PUSH(&interp->stack, cell_copy(c));
   return TPMI_OK;
 }
 
@@ -196,41 +210,38 @@ typedef struct arg_info {
 } arg_info_t;
 
 static bool check_func_args(tpmi_t *interp, word_t *word, arg_info_t *ai) {
-  const char *sig = word->func.sig;
-  unsigned depth = stack_depth(&interp->stack);
-  unsigned n = strlen(sig);
-  unsigned args = 0;
+  unsigned args = fn_arg_count(word->func, ARG_INPUT);
 
-  for (int i = n - 1; i >= 0; i--)
-    if (!isupper(sig[i]))
-      args++;
+  ai->args = args;
 
-  if (depth < args) {
+  if (args == 0)
+    return true;
+
+  cell_t *stk_arg = stack_get_nth(&interp->stack, args - 1);
+
+  if (stk_arg == NULL) {
     ERROR(interp, "'%s' expected %u args, but stack has %u elements",
-          word->key, args, depth);
+          word->key, args, stack_depth(&interp->stack));
     return false;
   }
 
+  ai->first = stk_arg;
+
   /* check arguments */
-  cell_t *arg = NULL;
+  unsigned i = 0;
 
-  for (int i = n - 1; i >= 0; i--) {
-    if (!isupper(sig[i])) {
-      arg = (arg == NULL) ? STACK_TOP(&interp->stack) : CELL_PREV(arg);
-
-      if (sig[i] == CT_ANY)
-        continue;
-
-      if (arg->type != sig[i]) {
-        ERROR(interp, "'%s' argument %u type mismatch - expected %c, got %c",
-              word->key, i, sig[i], arg->type);
+  for (const fn_arg_t *arg = word->func->args; arg->flags; arg++) {
+    if (arg->flags & ARG_INPUT) {
+      if ((arg->type != NULL) && (arg->type != stk_arg->type)) {
+        ERROR(interp, "'%s' argument %u type mismatch - expected "
+              BOLD "%s" RESET ", got " BOLD "%s" RESET,
+              word->key, i, arg->type->name, stk_arg->type->name);
         return false;
       }
+      stk_arg = CELL_NEXT(stk_arg);
+      i++;
     }
   }
-
-  ai->first = arg;
-  ai->args = args;
 
   return true;
 }
@@ -240,7 +251,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
     arg_info_t ai;
     if (!check_func_args(interp, word, &ai))
       return TPMI_ERROR;
-    return ((tpmi_fn_t)word->func.fn)(interp);
+    return ((tpmi_fn_t)word->func->fn)(interp);
   }
 
   if (word->type == WT_DEF) {
@@ -258,57 +269,48 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
     if (!check_func_args(interp, word, &ai))
       return TPMI_ERROR;
 
-    const char *sig = word->func.sig;
-    unsigned n = strlen(sig);
+    unsigned n = fn_arg_count(word->func, ARG_INPUT|ARG_OUTPUT);
 
     /* construct a call */
-    ffi_type *arg_type[n];
+    ffi_type *arg_ctype[n];
     void *arg_value[n];
 
     cell_t *arg = ai.first;
 
     for (int i = 0; i < n; i++) {
-      if (!isupper(sig[i])) {
-        /* pass input arguments */
-        if (arg->type == CT_INT) {
-          arg_type[i] = &ffi_type_sint;
+      const fn_arg_t *fn_arg = &word->func->args[i];
+
+      if (fn_arg->flags & ARG_INPUT) {
+        if (fn_arg->type == CT_INT) {
+          arg_ctype[i] = &ffi_type_sint;
           arg_value[i] = &arg->i;
-        } else if (arg->type == CT_FLOAT) {
-          arg_type[i] = &ffi_type_float;
+        } else if (fn_arg->type == CT_FLOAT) {
+          arg_ctype[i] = &ffi_type_float;
           arg_value[i] = &arg->f;
-        } else if (arg->type == CT_STRING) {
-          arg_type[i] = &ffi_type_pointer;
-          arg_value[i] = &arg->str;
-        } else if (arg->type == CT_MONO) {
-          arg_type[i] = &ffi_type_pointer;
-          arg_value[i] = &arg->mono;
-        } else if (arg->type == CT_COLOR) {
-          arg_type[i] = &ffi_type_pointer;
-          arg_value[i] = &arg->color;
         } else {
-          abort();
+          arg_ctype[i] = &ffi_type_pointer;
+          arg_value[i] = &arg->ptr;
         }
 
         arg = CELL_NEXT(arg);
       } else {
         /* pass output arguments, but firstly push them on top of stack */
-        char type = tolower(sig[i]);
         cell_t *c;
 
-        arg_type[i] = &ffi_type_pointer;
+        arg_ctype[i] = &ffi_type_pointer;
 
-        if (type == CT_INT) {
+        if (fn_arg->type == CT_INT) {
           c = cell_int(0);
           arg_value[i] = &c->i;
-        } else if (type == CT_FLOAT) {
+        } else if (fn_arg->type == CT_FLOAT) {
           c = cell_float(0.0);
           arg_value[i] = &c->f;
-        } else if (type == CT_MONO) {
+        } else if (fn_arg->type == CT_MONO) {
           c = cell_mono();
-          arg_value[i] = &c->mono;
-        } else if (type == CT_COLOR) {
+          arg_value[i] = &c->ptr;
+        } else if (fn_arg->type == CT_COLOR) {
           c = cell_color();
-          arg_value[i] = &c->color;
+          arg_value[i] = &c->ptr;
         } else {
           abort();
         }
@@ -321,9 +323,9 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
     ffi_arg result;
 
     assert(ffi_prep_cif(&cif, FFI_DEFAULT_ABI,
-                        n, &ffi_type_void, arg_type) == FFI_OK);
+                        n, &ffi_type_void, arg_ctype) == FFI_OK);
 
-    ffi_call(&cif, FFI_FN(word->func.fn), &result, arg_value);
+    ffi_call(&cif, FFI_FN(word->func->fn), &result, arg_value);
 
     /* remove input arguments from stack */
     arg = ai.first;
@@ -341,14 +343,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, word_t *word) {
   abort();
 }
 
-typedef struct {
-  const char *id;
-  void *fn;
-  const char *sig;
-  bool immediate;
-} func_ctor_t;
-
-static func_ctor_t builtins[] = {
+static fn_ctor_t builtins[] = {
   { "depth", &do_depth, "" },
   { "drop", &do_drop, "?" },
   { "roll", &do_roll, "i" },
@@ -364,7 +359,7 @@ static func_ctor_t builtins[] = {
   { NULL }
 };
 
-static func_ctor_t cfuncs[] = {
+static fn_ctor_t cfuncs[] = {
   { "explode", &tpm_explode, "MMMc" },
   { "implode", &tpm_implode, "Cmmm" },
   { "save-mono", &tpm_mono_buf_save, "ms" },
@@ -424,20 +419,19 @@ tpmi_t *tpmi_new() {
   interp->words = dict_new();
 
   /* Initialize builtin words */
-  for (func_ctor_t *builtin = builtins; builtin->id; builtin++) {
+  for (fn_ctor_t *builtin = builtins; builtin->id; builtin++) {
     word_t *word = dict_add(interp->words, builtin->id);
     word->type = WT_BUILTIN;
-    word->func.fn = (void *)builtin->fn;
-    word->func.sig = builtin->sig;
+    word->func = new_fn(builtin);
     word->immediate = builtin->immediate;
   }
 
   /* Initialize C function calls */
-  for (func_ctor_t *cfunc = cfuncs; cfunc->id; cfunc++) {
+  for (fn_ctor_t *cfunc = cfuncs; cfunc->id; cfunc++) {
     word_t *word = dict_add(interp->words, cfunc->id);
     word->type = WT_CFUNC;
-    word->func.fn = cfunc->fn;
-    word->func.sig = cfunc->sig;
+    word->func = new_fn(cfunc);
+    word->immediate = cfunc->immediate;
   }
 
   /* Add special variables */
@@ -479,8 +473,8 @@ static cell_t make_cell(const char *line, unsigned span) {
   if (read_float(line, span, &f))
     return (cell_t){CT_FLOAT, {.f = f}};
   if (line[0] == '"' && line[span - 1] == '"')
-    return (cell_t){CT_STRING, {.str = strndup(line + 1, span - 2)}};
-  return (cell_t){CT_ATOM, {.atom = strndup(line, span)}};
+    return (cell_t){CT_STRING, {.ptr = strndup(line + 1, span - 2)}};
+  return (cell_t){CT_ATOM, {.ptr = strndup(line, span)}};
 }
 
 tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
@@ -562,7 +556,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
           if (c.type == CT_ATOM && dict_add(interp->words, c.atom)->immediate) {
             status = eval_cell(interp, &c);
           } else {
-            STACK_PUSH(&interp->curr_word->def, cell_dup(&c));
+            STACK_PUSH(&interp->curr_word->def, cell_copy(&c));
             status = TPMI_NEED_MORE;
           }
         }
@@ -586,7 +580,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
 
         if (c.type == CT_ATOM)
           if (dict_add(interp->words, c.atom)->type == WT_CFUNC) {
-            STACK_PUSH(&interp->stack, cell_dup(&c));
+            STACK_PUSH(&interp->stack, cell_copy(&c));
             status = TPMI_OK;
           }
 

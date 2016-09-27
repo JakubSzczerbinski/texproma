@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "cell.h"
+#include "fn.h"
 
 typedef enum { WT_NULL, WT_VAR, WT_DEF, WT_BUILTIN, WT_CFUNC } word_type_t;
 
@@ -14,10 +15,7 @@ typedef struct {
   union {
     cell_t *var;
     cell_list_t def;
-    struct {
-      void (*fn)();
-      const char *sig;
-    } func;
+    fn_t *func;
   };
 } word_t;
 
