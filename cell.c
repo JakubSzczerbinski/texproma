@@ -12,7 +12,7 @@
 cell_t *new_cell(const cell_type_t *type, void *value) {
   cell_t *c = calloc(1, sizeof(cell_t));
   c->type = type;
-  c->ptr = value;
+  c->data = value;
   return c;
 }
 
@@ -110,15 +110,15 @@ cell_t *cell_atom(const char *atom) {
 }
 
 static void ct_atom_copy(cell_t *oc, cell_t *nc) {
-  nc->ptr = strdup(oc->ptr);
+  nc->data = strdup(oc->data);
 }
 
 static void ct_atom_stringify(cell_t *c, char *str, unsigned len) {
-  strlcpy(str, c->ptr, len);
+  strlcpy(str, c->data, len);
 }
 
 static void ct_atom_delete(cell_t *c) {
-  free(c->ptr);
+  free(c->data);
 }
 
 CT_DEF(CT_ATOM, "atom",
@@ -131,7 +131,7 @@ cell_t *cell_string(const char *str) {
 }
 
 static void ct_string_stringify(cell_t *c, char *str, unsigned len) {
-  snprintf(str, len, "\"%s\"", (char *)c->ptr);
+  snprintf(str, len, "\"%s\"", (char *)c->data);
 }
 
 CT_DEF(CT_STRING, "string",
@@ -154,7 +154,7 @@ static void ct_list_copy(cell_t *oc, cell_t *nc) {
 }
 
 static void ct_generic_stringify(cell_t *c, char *str, unsigned len) {
-  snprintf(str, len, "%s at %p", c->type->name, c->ptr);
+  snprintf(str, len, "%s at %p", c->type->name, c->data);
 }
 
 static void ct_list_delete(cell_t *c) {
@@ -164,6 +164,29 @@ static void ct_list_delete(cell_t *c) {
 CT_DEF(CT_LIST, "list",
        ct_list_copy, ct_generic_stringify, ct_list_delete);
 
+/* Function cell */
+
+cell_t *cell_fn(fn_t *fn) {
+  cell_t *c = calloc(1, sizeof(cell_t));
+  c->type = CT_FN;
+  c->fn = fn;
+  return c;
+}
+
+static void ct_fn_copy(cell_t *oc, cell_t *nc) {
+  unsigned size = sizeof(fn_t) + oc->fn->count * sizeof(fn_arg_t);
+  nc->fn = malloc(size);
+  memcpy(nc->data , oc->data, size);
+}
+
+static void ct_fn_delete(cell_t *c) {
+  free(c->fn);
+}
+
+CT_DEF(CT_FN, "function",
+       ct_fn_copy, ct_generic_stringify, ct_fn_delete);
+
+
 /* Mono image cell */
 
 cell_t *cell_mono() {
@@ -171,8 +194,8 @@ cell_t *cell_mono() {
 }
 
 static void ct_mono_copy(cell_t *oc, cell_t *nc) {
-  nc->ptr = malloc(TP_WIDTH * TP_HEIGHT);
-  memcpy(nc->ptr , oc->ptr, TP_WIDTH * TP_HEIGHT);
+  nc->data = malloc(TP_WIDTH * TP_HEIGHT);
+  memcpy(nc->data , oc->data, TP_WIDTH * TP_HEIGHT);
 }
 
 CT_DEF(CT_MONO, "mono-buf",
@@ -180,7 +203,7 @@ CT_DEF(CT_MONO, "mono-buf",
 
 /* Color image cell */
 
-#define COLOR(c, i) (((uint8_t **)(c)->ptr)[i])
+#define COLOR(c, i) (((uint8_t **)(c)->data)[i])
 
 cell_t *cell_color() {
   cell_t *c = new_cell(CT_COLOR, calloc(3, sizeof(tpm_mono_buf)));
@@ -190,7 +213,7 @@ cell_t *cell_color() {
 }
 
 void ct_color_copy(cell_t *oc, cell_t *nc) {
-  nc->ptr = calloc(3, sizeof(tpm_mono_buf));
+  nc->data = calloc(3, sizeof(tpm_mono_buf));
   for (int i = 0; i < 3; i++) {
     COLOR(nc, i) = malloc(TP_WIDTH * TP_HEIGHT);
     memcpy(COLOR(nc, i), COLOR(oc, i), TP_WIDTH * TP_HEIGHT);
@@ -200,7 +223,7 @@ void ct_color_copy(cell_t *oc, cell_t *nc) {
 void ct_color_delete(cell_t *c) {
   for (int i = 0; i < 3; i++)
     free(COLOR(c, i));
-  free(c->ptr);
+  free(c->data);
 }
 
 CT_DEF(CT_COLOR, "color-buf",

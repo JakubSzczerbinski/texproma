@@ -11,10 +11,7 @@ typedef enum { WT_VAR, WT_DEF, WT_BUILTIN, WT_CFUNC } word_type_t;
 typedef struct word {
   word_type_t type;
   bool immediate;
-  union {
-    cell_t *value;
-    fn_t *func;
-  };
+  cell_t *value;
 } word_t;
 
 void word_print(const char *key, word_t *word);

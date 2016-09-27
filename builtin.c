@@ -242,7 +242,7 @@ void tpmi_init(tpmi_t *interp) {
   for (fn_ctor_t *builtin = builtins; builtin->id; builtin++) {
     word_t *word = calloc(1, sizeof(word_t));
     word->type = WT_BUILTIN;
-    word->func = new_fn(builtin);
+    word->value = cell_fn(new_fn(builtin));
     word->immediate = builtin->immediate;
     dict_add(interp->words, builtin->id)->word = word;
   }
@@ -251,7 +251,7 @@ void tpmi_init(tpmi_t *interp) {
   for (fn_ctor_t *cfunc = cfuncs; cfunc->id; cfunc++) {
     word_t *word = calloc(1, sizeof(word_t));
     word->type = WT_CFUNC;
-    word->func = new_fn(cfunc);
+    word->value = cell_fn(new_fn(cfunc));
     word->immediate = cfunc->immediate;
     dict_add(interp->words, cfunc->id)->word = word;
   }

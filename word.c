@@ -16,9 +16,9 @@ void word_print(const char *key, word_t *word) {
       cell_print(c);
     printf(";" RESET);
   } else if (word->type == WT_BUILTIN) {
-    printf(BLUE "%s" RESET " : ", key); fn_sig_print(word->func);
+    printf(BLUE "%s" RESET " : ", key); fn_sig_print(word->value->fn);
   } else if (word->type == WT_CFUNC) {
-    printf(GREEN "%s" RESET " : ", key); fn_sig_print(word->func);
+    printf(GREEN "%s" RESET " : ", key); fn_sig_print(word->value->fn);
   } else {
     abort();
   }
@@ -27,11 +27,7 @@ void word_print(const char *key, word_t *word) {
 }
 
 void word_delete(word_t *word) {
-  if (word->type == WT_VAR || word->type == WT_DEF)
+  if (word->value)
     cell_delete(word->value);
-  else if (word->type == WT_BUILTIN || word->type == WT_CFUNC)
-    free(word->func);
-  else
-    abort();
   free(word);
 }

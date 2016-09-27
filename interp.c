@@ -29,7 +29,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry);
 
 static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
   if (c->type == CT_ATOM) {
-    entry_t *entry = dict_find(interp->words, (char *)c->ptr);
+    entry_t *entry = dict_find(interp->words, c->atom);
 
     if (entry->word == NULL) {
       ERROR(interp, "unknown identifier: '%s'", c->atom);
@@ -50,8 +50,8 @@ typedef struct arg_info {
 } arg_info_t;
 
 static bool check_func_args(tpmi_t *interp, entry_t *entry, arg_info_t *ai) {
-  word_t *word = entry->word;
-  unsigned args = fn_arg_count(word->func, ARG_INPUT);
+  fn_t *fn = entry->word->value->fn;
+  unsigned args = fn_arg_count(fn, ARG_INPUT);
 
   ai->args = args;
 
@@ -69,18 +69,18 @@ static bool check_func_args(tpmi_t *interp, entry_t *entry, arg_info_t *ai) {
   ai->first = stk_arg;
 
   /* check arguments */
-  unsigned i = 0;
+  for (unsigned i = 0, j = 0; i < fn->count; i++) {
+    const fn_arg_t *arg = &fn->args[i];
 
-  for (const fn_arg_t *arg = word->func->args; arg->flags; arg++) {
     if (arg->flags & ARG_INPUT) {
       if ((arg->type != NULL) && (arg->type != stk_arg->type)) {
         ERROR(interp, "'%s' argument %u type mismatch - expected "
               BOLD "%s" RESET ", got " BOLD "%s" RESET,
-              entry->key, i, arg->type->name, stk_arg->type->name);
+              entry->key, j, arg->type->name, stk_arg->type->name);
         return false;
       }
       stk_arg = CELL_NEXT(stk_arg);
-      i++;
+      j++;
     }
   }
 
@@ -94,7 +94,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
     arg_info_t ai;
     if (!check_func_args(interp, entry, &ai))
       return TPMI_ERROR;
-    return ((tpmi_fn_t)word->func->fn)(interp);
+    return ((tpmi_fn_t)word->value->fn)(interp);
   }
 
   if (word->type == WT_DEF) {
@@ -107,12 +107,13 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
   }
   
   if (word->type == WT_CFUNC) {
+    fn_t *fn = word->value->fn;
     arg_info_t ai;
 
     if (!check_func_args(interp, entry, &ai))
       return TPMI_ERROR;
 
-    unsigned n = fn_arg_count(word->func, ARG_INPUT|ARG_OUTPUT);
+    unsigned n = fn_arg_count(fn, ARG_INPUT|ARG_OUTPUT);
 
     /* construct a call */
     ffi_type *arg_ctype[n];
@@ -121,7 +122,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
     cell_t *arg = ai.first;
 
     for (int i = 0; i < n; i++) {
-      const fn_arg_t *fn_arg = &word->func->args[i];
+      const fn_arg_t *fn_arg = &fn->args[i];
 
       if (fn_arg->flags & ARG_INPUT) {
         if (fn_arg->type == CT_INT) {
@@ -132,7 +133,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
           arg_value[i] = &arg->f;
         } else {
           arg_ctype[i] = &ffi_type_pointer;
-          arg_value[i] = &arg->ptr;
+          arg_value[i] = &arg->data;
         }
 
         arg = CELL_NEXT(arg);
@@ -150,10 +151,10 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
           arg_value[i] = &c->f;
         } else if (fn_arg->type == CT_MONO) {
           c = cell_mono();
-          arg_value[i] = &c->ptr;
+          arg_value[i] = &c->data;
         } else if (fn_arg->type == CT_COLOR) {
           c = cell_color();
-          arg_value[i] = &c->ptr;
+          arg_value[i] = &c->data;
         } else {
           abort();
         }
@@ -168,7 +169,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
     assert(ffi_prep_cif(&cif, FFI_DEFAULT_ABI,
                         n, &ffi_type_void, arg_ctype) == FFI_OK);
 
-    ffi_call(&cif, FFI_FN(word->func->fn), &result, arg_value);
+    ffi_call(&cif, FFI_FN(fn->fn), &result, arg_value);
 
     /* remove input arguments from stack */
     arg = ai.first;
@@ -225,8 +226,8 @@ static cell_t make_cell(const char *line, unsigned span) {
   if (read_float(line, span, &f))
     return (cell_t){CT_FLOAT, {.f = f}};
   if (line[0] == '"' && line[span - 1] == '"')
-    return (cell_t){CT_STRING, {.ptr = strndup(line + 1, span - 2)}};
-  return (cell_t){CT_ATOM, {.ptr = strndup(line, span)}};
+    return (cell_t){CT_STRING, {.atom = strndup(line + 1, span - 2)}};
+  return (cell_t){CT_ATOM, {.data = strndup(line, span)}};
 }
 
 tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {

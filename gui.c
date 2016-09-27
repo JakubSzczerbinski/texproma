@@ -127,14 +127,14 @@ void gui_update(tpmi_t *interp) {
 
         if (c->type == CT_MONO) {
           for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
-            uint8_t p = ((uint8_t *)c->ptr)[i];
+            uint8_t p = ((uint8_t *)c->data)[i];
             pixels[i] = (RGBA){.r = p, .g = p, .b = p};
           }
         } else {
           for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
-            uint8_t r = ((uint8_t **)c->ptr)[0][i];
-            uint8_t g = ((uint8_t **)c->ptr)[1][i];
-            uint8_t b = ((uint8_t **)c->ptr)[2][i];
+            uint8_t r = ((uint8_t **)c->data)[0][i];
+            uint8_t g = ((uint8_t **)c->data)[1][i];
+            uint8_t b = ((uint8_t **)c->data)[2][i];
             pixels[i] = (RGBA){.r = r, .g = g, .b = b};
           }
         }

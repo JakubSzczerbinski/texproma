@@ -26,9 +26,10 @@ static const fn_sig_t fn_sig_map[] = {
 
 fn_t *new_fn(fn_ctor_t *ctor) {
   unsigned n = strlen(ctor->sig);
-  fn_t *fn = calloc(1, sizeof(fn_t) + (n + 1) * sizeof(fn_arg_t));
+  fn_t *fn = calloc(1, sizeof(fn_t) + n * sizeof(fn_arg_t));
 
   fn->fn = ctor->fn;
+  fn->count = n;
 
   for (unsigned i = 0; i < n; i++) {
     const fn_sig_t *fn_sig;
@@ -50,21 +51,21 @@ fn_t *new_fn(fn_ctor_t *ctor) {
 }
 
 unsigned fn_arg_count(const fn_t *fn, fn_arg_flags_t flags) {
-  const fn_arg_t *arg = fn->args;
-  unsigned count;
+  unsigned count = 0;
 
-  for (count = 0; arg->flags; arg++)
-    if (arg->flags & flags)
+  for (unsigned i = 0; i < fn->count; i++)
+    if (fn->args[i].flags & flags)
       count++;
 
   return count;
 }
 
-static void print_args(const fn_arg_t *arg, fn_arg_flags_t flags) {
+static void print_args(const fn_t *fn, fn_arg_flags_t flags) {
   bool first = true;
 
   fputs(BOLD "(" RESET, stdout);
-  for (; arg->flags != ARG_LAST; arg++) {
+  for (unsigned i = 0; i < fn->count; i++) {
+    const fn_arg_t *arg = &fn->args[i];
     if (arg->flags & flags) {
       if (first)
         first = false;
@@ -77,7 +78,7 @@ static void print_args(const fn_arg_t *arg, fn_arg_flags_t flags) {
 }
 
 void fn_sig_print(const fn_t *fn) {
-  print_args(fn->args, ARG_INPUT);
+  print_args(fn, ARG_INPUT);
   fputs(BOLD " ↦ " RESET, stdout);
-  print_args(fn->args, ARG_OUTPUT);
+  print_args(fn, ARG_OUTPUT);
 }

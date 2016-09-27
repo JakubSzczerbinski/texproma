@@ -5,7 +5,7 @@
 
 typedef struct cell_type cell_type_t;
 
-typedef enum { ARG_LAST = 0, ARG_INPUT = 1, ARG_OUTPUT = 2 } fn_arg_flags_t;
+typedef enum { ARG_INPUT = 1, ARG_OUTPUT = 2 } fn_arg_flags_t;
 
 typedef struct {
   const cell_type_t *type; /* may be NULL to denote any type */
@@ -14,6 +14,7 @@ typedef struct {
 
 typedef struct {
   void (*fn)();
+  unsigned count;
   fn_arg_t args[0];
 } fn_t;
 

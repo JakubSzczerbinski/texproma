@@ -23,6 +23,9 @@ extern const cell_type_t CT_FLOAT[1];
 extern const cell_type_t CT_ATOM[1];
 extern const cell_type_t CT_STRING[1];
 extern const cell_type_t CT_LIST[1];
+extern const cell_type_t CT_FN[1];
+
+/* Not builtin cell types... but declared here. */
 extern const cell_type_t CT_MONO[1];
 extern const cell_type_t CT_COLOR[1];
 
@@ -34,7 +37,8 @@ struct cell {
     int i;
     float f;
     char *atom;
-    void *ptr;
+    void *data;
+    fn_t *fn;
     cell_list_t head;
   };
   TAILQ_ENTRY(cell) list;
@@ -60,6 +64,7 @@ cell_t *cell_float(float f);
 cell_t *cell_atom(const char *atom);
 cell_t *cell_string(const char *str);
 cell_t *cell_list();
+cell_t *cell_fn(fn_t *fn);
 cell_t *cell_mono();
 cell_t *cell_color();
 
