@@ -1,7 +1,9 @@
 #ifndef __FN_H__
 #define __FN_H__
 
-#include "cell.h"
+#include <stdbool.h>
+
+typedef struct cell_type cell_type_t;
 
 typedef enum { ARG_LAST = 0, ARG_INPUT = 1, ARG_OUTPUT = 2 } fn_arg_flags_t;
 

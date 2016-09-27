@@ -137,6 +137,33 @@ static void ct_string_stringify(cell_t *c, char *str, unsigned len) {
 CT_DEF(CT_STRING, "string",
        ct_atom_copy, ct_string_stringify, ct_atom_delete);
 
+/* List head cell */
+
+cell_t *cell_list() {
+  cell_t *c = calloc(1, sizeof(cell_t));
+  c->type = CT_LIST;
+  TAILQ_INIT(&c->head);
+  return c;
+}
+
+static void ct_list_copy(cell_t *oc, cell_t *nc) {
+  cell_t *c;
+  TAILQ_INIT(&nc->head);
+  TAILQ_FOREACH(c, &oc->head, list)
+    TAILQ_INSERT_TAIL(&nc->head, cell_copy(c), list);
+}
+
+static void ct_generic_stringify(cell_t *c, char *str, unsigned len) {
+  snprintf(str, len, "%s at %p", c->type->name, c->ptr);
+}
+
+static void ct_list_delete(cell_t *c) {
+  clist_reset(&c->head);
+}
+
+CT_DEF(CT_LIST, "list",
+       ct_list_copy, ct_generic_stringify, ct_list_delete);
+
 /* Mono image cell */
 
 cell_t *cell_mono() {
@@ -148,12 +175,8 @@ static void ct_mono_copy(cell_t *oc, cell_t *nc) {
   memcpy(nc->ptr , oc->ptr, TP_WIDTH * TP_HEIGHT);
 }
 
-static void ct_mono_stringify(cell_t *c, char *str, unsigned len) {
-  snprintf(str, len, "%s at %p", c->type->name, c->ptr);
-}
-
 CT_DEF(CT_MONO, "mono-buf",
-       ct_mono_copy, ct_mono_stringify, ct_atom_delete);
+       ct_mono_copy, ct_generic_stringify, ct_atom_delete);
 
 /* Color image cell */
 
@@ -181,4 +204,4 @@ void ct_color_delete(cell_t *c) {
 }
 
 CT_DEF(CT_COLOR, "color-buf",
-       ct_color_copy, ct_mono_stringify, ct_color_delete);
+       ct_color_copy, ct_generic_stringify, ct_color_delete);

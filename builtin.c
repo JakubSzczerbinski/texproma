@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "libtexproma.h"
 #include "word.h"
 #include "interp.h"
 
@@ -130,13 +131,13 @@ static tpmi_status_t do_load(tpmi_t *interp) {
     return TPMI_ERROR;
 
   word_t *word = entry->word;
-  if (word->var == NULL) {
+  if (word->value == NULL) {
     ERROR(interp, "'%s': variable has not been initialized", key);
     return TPMI_ERROR;
   }
 
   cell_delete(STACK_POP(&interp->stack));
-  STACK_PUSH(&interp->stack, cell_copy(word->var));
+  STACK_PUSH(&interp->stack, cell_copy(word->value));
   return TPMI_OK;
 }
 
@@ -147,11 +148,11 @@ static tpmi_status_t do_store(tpmi_t *interp) {
   cell_delete(STACK_POP(&interp->stack));
   cell_t *value = STACK_POP(&interp->stack);
   word_t *word = entry->word;
-  if (word->var != NULL) {
-    cell_swap(word->var, value);
+  if (word->value != NULL) {
+    cell_swap(word->value, value);
     cell_delete(value);
   } else {
-    word->var = value;
+    word->value = value;
   }
   return TPMI_OK;
 }
@@ -258,9 +259,9 @@ void tpmi_init(tpmi_t *interp) {
   /* Add special variables */
   word_t *state = calloc(1, sizeof(word_t));
   state->type = WT_VAR;
-  state->var = cell_int(0);
+  state->value = cell_int(0);
   dict_add(interp->words, "state")->word = state;
-  interp->mode = (tpmi_mode_t *)&state->var->i;
+  interp->mode = (tpmi_mode_t *)&state->value->i;
 
   /* Compile initial program */
   for (char **line = initprog; *line; line++)

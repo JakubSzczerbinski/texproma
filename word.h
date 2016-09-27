@@ -12,8 +12,7 @@ typedef struct word {
   word_type_t type;
   bool immediate;
   union {
-    cell_t *var;
-    cell_list_t def;
+    cell_t *value;
     fn_t *func;
   };
 } word_t;

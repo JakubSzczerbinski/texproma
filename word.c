@@ -7,12 +7,12 @@
 void word_print(const char *key, word_t *word) {
   if (word->type == WT_VAR) {
     printf(MAGENTA "%s" RESET " = " BOLD, key);
-    cell_print(word->var);
+    cell_print(word->value);
     printf(RESET);
   } else if (word->type == WT_DEF) {
     cell_t *c;
     printf(BOLD ": %s ", key);
-    TAILQ_FOREACH(c, &word->def, list)
+    TAILQ_FOREACH(c, &word->value->head, list)
       cell_print(c);
     printf(";" RESET);
   } else if (word->type == WT_BUILTIN) {
@@ -27,11 +27,11 @@ void word_print(const char *key, word_t *word) {
 }
 
 void word_delete(word_t *word) {
-  if (word->type == WT_VAR)
-    cell_delete(word->var);
+  if (word->type == WT_VAR || word->type == WT_DEF)
+    cell_delete(word->value);
   else if (word->type == WT_BUILTIN || word->type == WT_CFUNC)
     free(word->func);
-  else if (word->type == WT_DEF)
-    clist_reset(&word->def);
+  else
+    abort();
   free(word);
 }

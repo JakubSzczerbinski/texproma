@@ -6,7 +6,7 @@
 #include <ctype.h>
 
 #include "ansi.h"
-#include "fn.h"
+#include "cell.h"
 
 typedef struct {
   char t;

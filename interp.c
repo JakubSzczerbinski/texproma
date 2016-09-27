@@ -100,7 +100,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
   if (word->type == WT_DEF) {
     cell_t *c;
     tpmi_status_t status = TPMI_OK;
-    TAILQ_FOREACH(c, &word->def, list)
+    TAILQ_FOREACH(c, &word->value->head, list)
       if (!(status = eval_cell(interp, c)))
         break;
     return status;
@@ -293,8 +293,8 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
             if (entry->word == NULL) {
               word_t *word = calloc(1, sizeof(word_t));
               word->type = WT_DEF;
+              word->value = cell_list();
               word->immediate = false;
-              TAILQ_INIT(&word->def);
               interp->curr_word = entry->word = word;
               status = TPMI_NEED_MORE;
             } else {
@@ -310,7 +310,7 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
               dict_add(interp->words, c.atom)->word->immediate) {
             status = eval_cell(interp, &c);
           } else {
-            STACK_PUSH(&interp->curr_word->def, cell_copy(&c));
+            STACK_PUSH(&interp->curr_word->value->head, cell_copy(&c));
             status = TPMI_NEED_MORE;
           }
         }

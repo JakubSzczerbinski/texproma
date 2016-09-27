@@ -3,7 +3,7 @@
 #define __CELL_H__
 
 #include "tailq.h"
-#include "libtexproma.h"
+#include "fn.h"
 
 typedef struct cell cell_t;
 
@@ -22,8 +22,11 @@ extern const cell_type_t CT_INT[1];
 extern const cell_type_t CT_FLOAT[1];
 extern const cell_type_t CT_ATOM[1];
 extern const cell_type_t CT_STRING[1];
+extern const cell_type_t CT_LIST[1];
 extern const cell_type_t CT_MONO[1];
 extern const cell_type_t CT_COLOR[1];
+
+typedef TAILQ_HEAD(cell_list, cell) cell_list_t;
 
 struct cell {
   const cell_type_t *type;
@@ -32,11 +35,10 @@ struct cell {
     float f;
     char *atom;
     void *ptr;
+    cell_list_t head;
   };
   TAILQ_ENTRY(cell) list;
 };
-
-typedef TAILQ_HEAD(cell_list, cell) cell_list_t;
 
 #define CELL_PREV(cell)                         \
   TAILQ_PREV(cell, cell_list, list)
@@ -57,6 +59,7 @@ cell_t *cell_int(int i);
 cell_t *cell_float(float f);
 cell_t *cell_atom(const char *atom);
 cell_t *cell_string(const char *str);
+cell_t *cell_list();
 cell_t *cell_mono();
 cell_t *cell_color();
 
