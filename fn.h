@@ -5,7 +5,11 @@
 
 typedef struct cell_type cell_type_t;
 
-typedef enum { ARG_INPUT = 1, ARG_OUTPUT = 2 } fn_arg_flags_t;
+typedef enum {
+  ARG_INPUT = 1,
+  ARG_OUTPUT = 2,
+  ARG_COERCIBLE = 4
+} fn_arg_flags_t;
 
 typedef struct {
   const cell_type_t *type; /* may be NULL to denote any type */

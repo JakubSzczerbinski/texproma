@@ -6,6 +6,8 @@
 #include "cell.h"
 #include "libtexproma.h"
 
+#define offsetof(st, m) __builtin_offsetof(st, m)
+
 #define CT_DEF(type, name, new, copy, stringify, delete)        \
   const cell_type_t type[1] = {{                                \
     (name), (new), (copy), (stringify), (delete) }}
@@ -33,9 +35,9 @@ cell_t *cell_copy(cell_t *c) {
 void cell_swap(cell_t *c1, cell_t *c2) {
   cell_t t;
 
-  memcpy(&t, c1, sizeof(cell_t));
-  memcpy(c1, c2, sizeof(cell_t));
-  memcpy(c2, &t, sizeof(cell_t));
+  memcpy(&t, c1, offsetof(cell_t, list));
+  memcpy(c1, c2, offsetof(cell_t, list));
+  memcpy(c2, &t, offsetof(cell_t, list));
 }
 
 char *cell_stringify(cell_t *c) {
@@ -63,6 +65,13 @@ unsigned clist_length(cell_list_t *clist) {
   unsigned n = 0;
   TAILQ_FOREACH(c, clist, list) n++;
   return n;
+}
+
+void clist_copy(cell_list_t *ncl, cell_list_t *ocl) {
+  cell_t *c;
+  TAILQ_INIT(ncl);
+  TAILQ_FOREACH(c, ocl, list)
+    TAILQ_INSERT_TAIL(ncl, cell_copy(c), list);
 }
 
 void clist_reset(cell_list_t *clist) {
@@ -140,10 +149,7 @@ static cell_t *ct_list_new() {
 }
 
 static void ct_list_copy(cell_t *oc, cell_t *nc) {
-  cell_t *c;
-  TAILQ_INIT(&nc->head);
-  TAILQ_FOREACH(c, &oc->head, list)
-    TAILQ_INSERT_TAIL(&nc->head, cell_copy(c), list);
+  clist_copy(&nc->head, &oc->head);
 }
 
 static void ct_generic_stringify(cell_t *c, char *str, unsigned len) {

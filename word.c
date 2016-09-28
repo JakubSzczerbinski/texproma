@@ -6,7 +6,7 @@
 
 void word_print(const char *key, word_t *word) {
   if (word->type == WT_VAR) {
-    printf(MAGENTA "%s" RESET " = " BOLD, key);
+    printf(YELLOW "%s" RESET " = " BOLD, key);
     cell_print(word->value);
     printf(RESET);
   } else if (word->type == WT_DEF) {

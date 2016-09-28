@@ -159,16 +159,6 @@ static tpmi_status_t do_store(tpmi_t *interp) {
   return TPMI_OK;
 }
 
-static tpmi_status_t do_mono(tpmi_t *interp) {
-  stack_push(&interp->stack, CT_MONO->new());
-  return TPMI_OK;
-}
-
-static tpmi_status_t do_color(tpmi_t *interp) {
-  stack_push(&interp->stack, CT_COLOR->new());
-  return TPMI_OK;
-}
-
 static fn_ctor_t builtins[] = {
   { "depth", &do_depth, "" },
   { "drop", &do_drop, "?" },
@@ -180,8 +170,6 @@ static fn_ctor_t builtins[] = {
   { ".p", &do_print, "?" },
   { ".s", &do_print_stack, "", true },
   { "?", &do_print_dict, "", true },
-  { "mono", &do_mono, "" },
-  { "color", &do_color, "" },
   { NULL }
 };
 
@@ -195,47 +183,55 @@ static char *initprog[] = {
   ": rot 2 roll ;",
   ": tuck swap over ;",
   ": nip swap drop ;",
+  ": get-red 0 extract ;",
+  ": get-green 1 extract ;",
+  ": get-blue 2 extract ;",
+  ": put-red 0 insert ;",
+  ": put-green 1 insert ;",
+  ": put-blue 2 insert ;",
   NULL
 };
 
 static fn_ctor_t cfuncs[] = {
-  { "explode", &tpm_explode, "MMMc" },
-  { "implode", &tpm_implode, "Cmmm" },
+  { "insert", &tpm_insert, "<>cmi" },
+  { "extract", &tpm_extract, "<>c>mi" },
+  { "explode", &tpm_explode, ">m>m>mc" },
+  { "implode", &tpm_implode, ">cmmm" },
   { "save-mono", &tpm_mono_buf_save, "ms" },
   { "save-color", &tpm_color_buf_save, "cs" },
-  { "sine", &tpm_sine, "Mf" },
-  { "noise", &tpm_noise, "Mii" },
-  { "plasma", &tpm_plasma, "M" },
-  { "light", &tpm_light, "Mif" },
-  { "perlin-noise", &tpm_perlin_noise, "Mi" },
-  { "add", &tpm_add, "Mmm" },
-  { "mul", &tpm_mul, "Mmm" },
-  { "mix", &tpm_mix, "Mmmi" },
-  { "max", &tpm_max, "Mmm" },
-  { "shade", &tpm_shade, "Mmm" },
-  { "mix-map", &tpm_mix_map, "Mmmm" },
-  { "repeat", &tpm_repeat, "Mmii" },
-  { "flip", &tpm_flip, "Mm" },
-  { "rotate", &tpm_rotate, "Mm" },
-  { "twist", &tpm_twist, "Mmf" },
-  { "move", &tpm_move, "Mmff" },
-  { "distort", &tpm_distort, "Mmmmff" },
-  { "invert", &tpm_invert, "Mm" },
-  { "sine-color", &tpm_sine_color, "Mmi" },
-  { "hsv-modify", &tpm_hsv_modify, "Ccff" },
-  { "brightness", &tpm_brightness, "Mmf" },
-  { "contrast", &tpm_contrast, "Mmf" },
-  { "colorize", &tpm_colorize, "Cmii" },
-  { "grayscale", &tpm_grayscale, "Mc" },
-  { "blur-3x3", &tpm_blur_3x3, "Mm" },
-  { "blur-5x5", &tpm_blur_5x5, "Mm" },
-  { "gaussian-3x3", &tpm_gaussian_3x3, "Mm" },
-  { "gaussian-5x5", &tpm_gaussian_5x5, "Mm" },
-  { "sharpen", &tpm_sharpen, "Mm" },
-  { "emboss", &tpm_emboss, "Mm" },
-  { "edges", &tpm_edges, "Mm" },
-  { "median-3x3", &tpm_median_3x3, "Mm" },
-  { "median-5x5", &tpm_median_5x5, "Mm" },
+  { "sine", &tpm_sine, ">mf" },
+  { "noise", &tpm_noise, ">mii" },
+  { "plasma", &tpm_plasma, ">m" },
+  { "light", &tpm_light, ">mif" },
+  { "perlin-noise", &tpm_perlin_noise, ">mi" },
+  { "add", &tpm_add, ">@m@m@m" },
+  { "mul", &tpm_mul, ">@m@m@m" },
+  { "mix", &tpm_mix, ">@m@m@mi" },
+  { "max", &tpm_max, ">@m@m@m" },
+  { "shade", &tpm_shade, ">mmm" },
+  { "mix-map", &tpm_mix_map, ">mmmm" },
+  { "repeat", &tpm_repeat, ">@m@mii" },
+  { "flip", &tpm_flip, ">@m@m" },
+  { "rotate", &tpm_rotate, ">@m@m" },
+  { "twist", &tpm_twist, ">@m@mf" },
+  { "move", &tpm_move, ">@m@mff" },
+  { "distort", &tpm_distort, ">@m@mmmff" },
+  { "invert", &tpm_invert, ">@m@m" },
+  { "sine-color", &tpm_sine_color, ">@m@mi" },
+  { "hsv-modify", &tpm_hsv_modify, ">ccff" },
+  { "brightness", &tpm_brightness, ">@m@mf" },
+  { "contrast", &tpm_contrast, ">@m@mf" },
+  { "colorize", &tpm_colorize, ">cmii" },
+  { "grayscale", &tpm_grayscale, ">mc" },
+  { "blur-3x3", &tpm_blur_3x3, ">@m@m" },
+  { "blur-5x5", &tpm_blur_5x5, ">@m@m" },
+  { "gaussian-3x3", &tpm_gaussian_3x3, ">@m@m" },
+  { "gaussian-5x5", &tpm_gaussian_5x5, ">@m@m" },
+  { "sharpen", &tpm_sharpen, ">@m@m" },
+  { "emboss", &tpm_emboss, ">@m@m" },
+  { "edges", &tpm_edges, ">@m@m" },
+  { "median-3x3", &tpm_median_3x3, ">@m@m" },
+  { "median-5x5", &tpm_median_5x5, ">@m@m" },
   { NULL }
 };
 

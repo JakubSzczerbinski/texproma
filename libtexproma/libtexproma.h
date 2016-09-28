@@ -9,10 +9,7 @@
 typedef uint8_t *tpm_mono_buf;
 typedef uint8_t **tpm_color_buf;
 
-void tpm_explode(tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b,
-                 tpm_color_buf c);
-void tpm_implode(tpm_color_buf c, 
-                 tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b);
+/* file ops */
 void tpm_mono_buf_save(tpm_mono_buf src, char *filename);
 void tpm_color_buf_save(tpm_color_buf src, char *filename);
 
@@ -24,7 +21,13 @@ void tpm_light(tpm_mono_buf dst, unsigned type, float radius);
 void tpm_perlin_noise(tpm_mono_buf dst, unsigned seed);
 
 /* buffer ops */
-void tpm_set(tpm_mono_buf dst, int value);
+void tpm_insert(tpm_color_buf dst, tpm_mono_buf src, unsigned n);
+void tpm_extract(tpm_color_buf src, tpm_mono_buf dst, unsigned n);
+void tpm_color(tpm_color_buf dst, tpm_mono_buf src);
+void tpm_explode(tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b,
+                 tpm_color_buf c);
+void tpm_implode(tpm_color_buf c, 
+                 tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b);
 void tpm_add(tpm_mono_buf dst, tpm_mono_buf src1, tpm_mono_buf src2);
 void tpm_mul(tpm_mono_buf dst, tpm_mono_buf src1, tpm_mono_buf src2);
 void tpm_mix(tpm_mono_buf dst, tpm_mono_buf src1, tpm_mono_buf src2,

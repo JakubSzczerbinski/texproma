@@ -1,7 +1,19 @@
 #include "libtexproma_private.h"
 
-void tpm_set(tpm_mono_buf dst, int value) {
-  memset(dst, value, TP_WIDTH * TP_HEIGHT);
+void tpm_insert(tpm_color_buf dst, tpm_mono_buf src, unsigned n) {
+  n = constrain(n, 0, 2);
+  memcpy(dst[n], src, TP_WIDTH * TP_HEIGHT);
+}
+
+void tpm_extract(tpm_color_buf src, tpm_mono_buf dst, unsigned n) {
+  n = constrain(n, 0, 2);
+  memcpy(dst, src[n], TP_WIDTH * TP_HEIGHT);
+}
+
+void tpm_color(tpm_color_buf dst, tpm_mono_buf src) {
+  memcpy(dst[0], src, TP_WIDTH * TP_HEIGHT);
+  memcpy(dst[1], src, TP_WIDTH * TP_HEIGHT);
+  memcpy(dst[2], src, TP_WIDTH * TP_HEIGHT);
 }
 
 void tpm_explode(tpm_mono_buf r, tpm_mono_buf g, tpm_mono_buf b,

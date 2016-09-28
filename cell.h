@@ -60,10 +60,19 @@ static inline cell_t *clist_next(cell_t *c) {
   return TAILQ_NEXT(c, list);
 }
 
+static inline cell_t *clist_first(cell_list_t *clist) {
+  return TAILQ_FIRST(clist);
+}
+
+static inline void clist_append(cell_list_t *clist, cell_t *c) {
+  TAILQ_INSERT_TAIL(clist, c, list);
+}
+
 static inline void clist_remove(cell_list_t *clist, cell_t *c) {
   TAILQ_REMOVE(clist, c, list);
 }
 
+void clist_copy(cell_list_t *ncl, cell_list_t *ocl);
 unsigned clist_length(cell_list_t *clist);
 void clist_reset(cell_list_t *clist);
 

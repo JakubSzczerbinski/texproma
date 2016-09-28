@@ -57,7 +57,6 @@ static char **texproma_completion(const char *text, int start, int end) {
 
 int main(int argc, char *argv[]) {
   interp = tpmi_new(); 
-  tpmi_compile(interp, "plasma 3 3 repeat 0x008000 0x80ff80 colorize");
 
   gui_init();
   gui_update(interp);

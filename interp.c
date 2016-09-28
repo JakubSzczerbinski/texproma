@@ -11,6 +11,8 @@
 #include "interp.h"
 #include "ansi.h"
 
+#include "libtexproma.h"
+
 cell_t *stack_get_nth(cell_list_t *stack, unsigned n) {
   if (TAILQ_EMPTY(stack))
     return NULL;
@@ -31,7 +33,7 @@ static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
   if (c->type == CT_ATOM) {
     entry_t *entry = dict_find(interp->words, c->atom);
 
-    if (entry->word == NULL) {
+    if (entry == NULL) {
       ERROR(interp, "unknown identifier: '%s'", c->atom);
       return TPMI_ERROR;
     }
@@ -45,46 +47,136 @@ static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
 }
 
 typedef struct arg_info {
-  unsigned args;
-  cell_t *first;
+  bool do_color;
+  cell_list_t args;
 } arg_info_t;
 
 static bool check_func_args(tpmi_t *interp, entry_t *entry, arg_info_t *ai) {
   fn_t *fn = entry->word->value->fn;
   unsigned args = fn_arg_count(fn, ARG_INPUT);
 
-  ai->args = args;
+  TAILQ_INIT(&ai->args);
+  ai->do_color = false;
 
   if (args == 0)
     return true;
 
-  cell_t *stk_arg = stack_get_nth(&interp->stack, args - 1);
+  cell_t *arg = stack_get_nth(&interp->stack, args - 1);
 
-  if (stk_arg == NULL) {
+  if (arg == NULL) {
     ERROR(interp, "'%s' expected %u args, but stack has %u elements",
           entry->key, args, clist_length(&interp->stack));
     return false;
   }
 
-  ai->first = stk_arg;
+  /* move arguments from stack to arg_info */
+  for (unsigned i = 0; i < args; i++) {
+    cell_t *next = clist_next(arg);
+    clist_remove(&interp->stack, arg);
+    clist_append(&ai->args, arg);
+    arg = next;
+  }
 
   /* check arguments */
-  for (unsigned i = 0, j = 0; i < fn->count; i++) {
-    const fn_arg_t *arg = &fn->args[i];
+  arg = clist_first(&ai->args);
 
-    if (arg->flags & ARG_INPUT) {
-      if ((arg->type != NULL) && (arg->type != stk_arg->type)) {
-        ERROR(interp, "'%s' argument %u type mismatch - expected "
-              BOLD "%s" RESET ", got " BOLD "%s" RESET,
-              entry->key, j, arg->type->name, stk_arg->type->name);
-        return false;
+  for (unsigned i = 0, j = 0; i < fn->count; i++) {
+    const fn_arg_t *fn_arg = &fn->args[i];
+
+    if (fn_arg->flags & ARG_INPUT) {
+      /* HACK: if color-buf was passed instead of mono-buf, check if argument
+       *       is coercible, if so mark function to be executed for each
+       *       buffer channel separately */
+      if ((fn_arg->type == CT_MONO) && (fn_arg->flags & ARG_COERCIBLE) && 
+          (arg->type == CT_COLOR)) {
+        ai->do_color = true;
+      } else {
+        /* HACK: automatic coercion from mono-buf to color-buf */
+        if ((fn_arg->type == CT_COLOR) && (arg->type == CT_MONO)) {
+          cell_t *color = CT_COLOR->new();
+          tpm_color(color->data, arg->data);
+          cell_swap(color, arg);
+          cell_delete(color);
+        }
+
+        if ((fn_arg->type != NULL) && (fn_arg->type != arg->type)) {
+          ERROR(interp, "'%s' argument %u type mismatch - expected "
+                BOLD "%s" RESET ", got " BOLD "%s" RESET,
+                entry->key, j, fn_arg->type->name, arg->type->name);
+          TAILQ_CONCAT(&interp->stack, &ai->args, list);
+          return false;
+        }
       }
-      stk_arg = clist_next(stk_arg);
+      arg = clist_next(arg);
       j++;
     }
   }
 
   return true;
+}
+
+static void call_func(tpmi_t *interp,
+                      fn_t *fn, cell_list_t *args, cell_list_t *res)
+{
+  unsigned n = fn_arg_count(fn, ARG_INPUT|ARG_OUTPUT);
+
+  /* construct a call */
+  ffi_type *arg_ctype[n];
+  void *arg_value[n];
+
+  cell_t *arg = clist_first(args);
+
+  for (int i = 0; i < n; i++) {
+    const fn_arg_t *fn_arg = &fn->args[i];
+
+    if (fn_arg->flags & ARG_INPUT) {
+      if (fn_arg->type == CT_INT) {
+        arg_ctype[i] = &ffi_type_sint;
+        arg_value[i] = &arg->i;
+      } else if (fn_arg->type == CT_FLOAT) {
+        arg_ctype[i] = &ffi_type_float;
+        arg_value[i] = &arg->f;
+      } else {
+        arg_ctype[i] = &ffi_type_pointer;
+        arg_value[i] = &arg->data;
+      }
+
+      cell_t *prev = arg;
+      arg = clist_next(arg);
+
+      /* Add placeholder for input-output arguments */
+      if (fn_arg->flags & ARG_OUTPUT) {
+        clist_remove(args, prev);
+        clist_append(res, prev);
+      }
+    } else {
+      /* pass output arguments, but firstly push them on top of stack */
+      cell_t *c = fn_arg->type->new();
+
+      arg_ctype[i] = &ffi_type_pointer;
+
+      if (fn_arg->type == CT_INT)
+        arg_value[i] = &c->i;
+      else if (fn_arg->type == CT_FLOAT)
+        arg_value[i] = &c->f;
+      else if (fn_arg->type == CT_MONO)
+        arg_value[i] = &c->data;
+      else if (fn_arg->type == CT_COLOR)
+        arg_value[i] = &c->data;
+      else
+        abort();
+
+      clist_append(res, c);
+    }
+  }
+
+  ffi_cif cif;
+  ffi_arg result;
+
+  assert(ffi_prep_cif(&cif, FFI_DEFAULT_ABI,
+                      n, &ffi_type_void, arg_ctype) == FFI_OK);
+
+  ffi_call(&cif, FFI_FN(fn->ptr), &result, arg_value);
 }
 
 static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
@@ -94,6 +186,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
     arg_info_t ai;
     if (!check_func_args(interp, entry, &ai))
       return TPMI_ERROR;
+    TAILQ_CONCAT(&interp->stack, &ai.args, list);
     return ((tpmi_fn_t)word->value->fn->ptr)(interp);
   }
 
@@ -113,68 +206,48 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
     if (!check_func_args(interp, entry, &ai))
       return TPMI_ERROR;
 
-    unsigned n = fn_arg_count(fn, ARG_INPUT|ARG_OUTPUT);
+    if (ai.do_color) {
+      cell_list_t args;
+      cell_list_t res;
 
-    /* construct a call */
-    ffi_type *arg_ctype[n];
-    void *arg_value[n];
+      TAILQ_INIT(&res);
 
-    cell_t *arg = ai.first;
+      for (unsigned j = 0; j < 3; j++) {
+        clist_copy(&args, &ai.args);
 
-    for (int i = 0; i < n; i++) {
-      const fn_arg_t *fn_arg = &fn->args[i];
+        cell_t *arg = clist_first(&args);
 
-      if (fn_arg->flags & ARG_INPUT) {
-        if (fn_arg->type == CT_INT) {
-          arg_ctype[i] = &ffi_type_sint;
-          arg_value[i] = &arg->i;
-        } else if (fn_arg->type == CT_FLOAT) {
-          arg_ctype[i] = &ffi_type_float;
-          arg_value[i] = &arg->f;
-        } else {
-          arg_ctype[i] = &ffi_type_pointer;
-          arg_value[i] = &arg->data;
+        for (unsigned i = 0; i < fn->count; i++) {
+          const fn_arg_t *fn_arg = &fn->args[i];
+          if (fn_arg->flags & ARG_INPUT) {
+            if ((fn_arg->type == CT_MONO) && (fn_arg->flags & ARG_COERCIBLE) && 
+                (arg->type == CT_COLOR)) {
+              cell_t *mono = CT_MONO->new();
+              tpm_extract(arg->data, mono->data, j);
+              cell_swap(mono, arg);
+              cell_delete(mono);
+            }
+            arg = clist_next(arg);
+          }
         }
-
-        arg = clist_next(arg);
-      } else {
-        /* pass output arguments, but firstly push them on top of stack */
-        cell_t *c = fn_arg->type->new();
-
-        arg_ctype[i] = &ffi_type_pointer;
-
-        if (fn_arg->type == CT_INT)
-          arg_value[i] = &c->i;
-        else if (fn_arg->type == CT_FLOAT)
-          arg_value[i] = &c->f;
-        else if (fn_arg->type == CT_MONO)
-          arg_value[i] = &c->data;
-        else if (fn_arg->type == CT_COLOR)
-          arg_value[i] = &c->data;
-        else
-          abort();
-
-        stack_push(&interp->stack, c);
+        call_func(interp, fn, &args, &res);
+        clist_reset(&args);
       }
+
+      cell_t *color = CT_COLOR->new();
+      cell_t *r = clist_first(&res);
+      cell_t *g = clist_next(r);
+      cell_t *b = clist_next(g);
+
+      tpm_implode(color->data, r->data, g->data, b->data);
+      stack_push(&interp->stack, color);
+
+      clist_reset(&res);
+    } else {
+      call_func(interp, fn, &ai.args, &interp->stack);
     }
 
-    ffi_cif cif;
-    ffi_arg result;
-
-    assert(ffi_prep_cif(&cif, FFI_DEFAULT_ABI,
-                        n, &ffi_type_void, arg_ctype) == FFI_OK);
-
-    ffi_call(&cif, FFI_FN(fn->ptr), &result, arg_value);
-
-    /* remove input arguments from stack */
-    arg = ai.first;
-
-    for (unsigned i = 0; i < ai.args; i++) {
-      cell_t *c = arg;
-      arg = clist_next(arg);
-      clist_remove(&interp->stack, c);
-      cell_delete(c);
-    }
+    clist_reset(&ai.args);
 
     return TPMI_OK;
   }
