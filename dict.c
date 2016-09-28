@@ -66,15 +66,19 @@ dict_t *dict_new() {
   return hsearch;
 }
 
-void dict_delete(dict_t *dict) {
+void dict_reset(dict_t *dict) {
   entry_t *entry = NULL;
 
   while (dict_iter(dict, &entry)) {
     free(entry->key);
     if (entry->word)
       word_delete(entry->word);
+    bzero(entry, sizeof(entry_t));
   }
+}
 
+void dict_delete(dict_t *dict) {
+  dict_reset(dict);
   free(dict->entries);
   free(dict);
 }

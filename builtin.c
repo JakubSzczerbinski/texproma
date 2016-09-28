@@ -159,6 +159,11 @@ static tpmi_status_t do_store(tpmi_t *interp) {
   return TPMI_OK;
 }
 
+static tpmi_status_t do_reset(tpmi_t *interp) {
+  interp->reset = true;
+  return TPMI_OK;
+}
+
 static fn_ctor_t builtins[] = {
   { "depth", &do_depth, "" },
   { "drop", &do_drop, "?" },
@@ -168,6 +173,7 @@ static fn_ctor_t builtins[] = {
   { "!", &do_store, "?a" },
   { "@", &do_load, "a" },
   { ".p", &do_print, "?" },
+  { ".reset", &do_reset, "", true },
   { ".s", &do_print_stack, "", true },
   { "?", &do_print_dict, "", true },
   { NULL }

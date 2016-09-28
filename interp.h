@@ -37,6 +37,7 @@ typedef struct tpmi {
   dict_t *words;        /* word dictionary */
 
   char errmsg[ERRMSG_LENGTH];
+  bool reset;           /* if true then please reset interpreter */
   tpmi_mode_t *mode;    /* current working mode */
   word_t *curr_word;    /* word being compiled now */
 } tpmi_t;
@@ -44,6 +45,7 @@ typedef struct tpmi {
 typedef tpmi_status_t (*tpmi_fn_t)(tpmi_t *);
 
 tpmi_t *tpmi_new();
+void tpmi_reset(tpmi_t *interp);
 void tpmi_delete(tpmi_t *interp);
 tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line);
 

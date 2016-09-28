@@ -261,10 +261,21 @@ tpmi_t *tpmi_new() {
   tpmi_t *interp = calloc(1, sizeof(tpmi_t));
   TAILQ_INIT(&interp->stack);
   interp->words = dict_new();
+  interp->reset = false;
 
   tpmi_init(interp);
 
   return interp;
+}
+
+void tpmi_reset(tpmi_t *interp) {
+  interp->reset = false;
+  interp->mode = NULL;
+  interp->curr_word = NULL;
+
+  clist_reset(&interp->stack);
+  dict_reset(interp->words);
+  tpmi_init(interp);
 }
 
 void tpmi_delete(tpmi_t *interp) {
@@ -424,6 +435,9 @@ error:
       fprintf(stderr, RED "error: " RESET "%s\n", interp->errmsg);
       break;
     }
+
+    if (interp->reset)
+      tpmi_reset(interp);
   }
 
   return status;

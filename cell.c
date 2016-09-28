@@ -78,6 +78,7 @@ void clist_reset(cell_list_t *clist) {
   cell_t *c, *next;
   TAILQ_FOREACH_SAFE(c, clist, list, next)
     cell_delete(c);
+  TAILQ_INIT(clist);
 }
 
 /* Integer cell */
