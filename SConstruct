@@ -36,6 +36,7 @@ env.Append(LINKFLAGS = '-g')
 conf = Configure(env)
 
 env['HAVE_STRNDUP'] = conf.CheckFunc('strndup')
+env['HAVE_STRLCPY'] = conf.CheckFunc('strlcpy')
 env['HAVE_RANDOM'] = conf.CheckFunc('random')
 
 dependencies = [('m', 'math.h', None),
@@ -70,9 +71,9 @@ SConscript('libtexproma/SConscript', exports='env')
 ctag_sources = [Glob('*.[ch]'), Glob('libtexproma/*.[ch]')]
 Alias('tags', env.ctags(source=ctag_sources, target='tags'))
 
-env.Append(LIBS = ['texproma'])
-env.Append(LIBPATH = ['libtexproma'])
-env.Append(CPPPATH = ['libtexproma'])
+env.Prepend(LIBS = ['texproma'])
+env.Prepend(LIBPATH = ['libtexproma'])
+env.Prepend(CPPPATH = ['libtexproma'])
 
 sources = ['main.c', 'cell.c', 'fn.c', 'word.c', 'dict.c',
            'builtin.c', 'gui.c', 'interp.c']

@@ -2,6 +2,10 @@
 char *strndup(const char *s1, size_t n);
 #endif
 
+#ifndef HAVE_STRLCPY
+size_t strlcpy(char *restrict dst, const char *restrict src, size_t dsize);
+#endif
+
 #ifndef HAVE_RANDOM
 long random(void);
 #endif
