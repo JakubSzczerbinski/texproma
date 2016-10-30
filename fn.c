@@ -21,7 +21,7 @@ static const fn_sig_t fn_sig_map[] = {
   {'m', CT_MONO},
   {'c', CT_COLOR},
   {'?', NULL},
-  {0}
+  {0, NULL}
 };
 
 static unsigned sig_length(const char *sig) {

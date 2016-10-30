@@ -115,8 +115,7 @@ static bool check_func_args(tpmi_t *interp, entry_t *entry, arg_info_t *ai) {
   return true;
 }
 
-static void call_func(tpmi_t *interp,
-                      fn_t *fn, cell_list_t *args, cell_list_t *res)
+static void call_func(fn_t *fn, cell_list_t *args, cell_list_t *res)
 {
   unsigned n = fn_arg_count(fn, ARG_INPUT|ARG_OUTPUT);
 
@@ -126,7 +125,7 @@ static void call_func(tpmi_t *interp,
 
   cell_t *arg = clist_first(args);
 
-  for (int i = 0; i < n; i++) {
+  for (unsigned i = 0; i < n; i++) {
     const fn_arg_t *fn_arg = &fn->args[i];
 
     if (fn_arg->flags & ARG_INPUT) {
@@ -230,7 +229,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
             arg = clist_next(arg);
           }
         }
-        call_func(interp, fn, &args, &res);
+        call_func(fn, &args, &res);
         clist_reset(&args);
       }
 
@@ -244,7 +243,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
 
       clist_reset(&res);
     } else {
-      call_func(interp, fn, &ai.args, &interp->stack);
+      call_func(fn, &ai.args, &interp->stack);
     }
 
     clist_reset(&ai.args);
@@ -301,12 +300,13 @@ static cell_t make_cell(const char *line, unsigned span) {
   int i; float f;
 
   if (read_int(line, span, &i))
-    return (cell_t){CT_INT, {.i = i}};
+    return (cell_t){CT_INT, {.i = i}, {NULL, NULL}};
   if (read_float(line, span, &f))
-    return (cell_t){CT_FLOAT, {.f = f}};
+    return (cell_t){CT_FLOAT, {.f = f}, {NULL, NULL}};
   if (line[0] == '"' && line[span - 1] == '"')
-    return (cell_t){CT_STRING, {.atom = strndup(line + 1, span - 2)}};
-  return (cell_t){CT_ATOM, {.data = strndup(line, span)}};
+    return (cell_t){CT_STRING, {.atom = strndup(line + 1, span - 2)},
+                    {NULL, NULL}};
+  return (cell_t){CT_ATOM, {.data = strndup(line, span)}, {NULL, NULL}};
 }
 
 tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {

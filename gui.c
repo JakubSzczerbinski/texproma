@@ -19,7 +19,7 @@ static TTF_Font *font16;
 static void RenderText(SDL_Renderer *renderer, TTF_Font *font,
                        const char *str, SDL_Rect *dst, bool center)
 {
-  SDL_Color white = {255, 255, 255};
+  SDL_Color white = {.r = 255, .g = 255, .b = 255, .a = 0};
   SDL_Surface *surf = TTF_RenderUTF8_Blended(font, str, white);
   SDL_Texture *text = SDL_CreateTextureFromSurface(renderer, surf);
   SDL_Rect area = {
@@ -109,7 +109,7 @@ void gui_update(tpmi_t *interp) {
 
   /* display textures on top of the stack */
   unsigned n = 0;
-  int stkcnt = TP_HEIGHT / FONT_H;
+  unsigned stkcnt = TP_HEIGHT / FONT_H;
   int imgcnt = NUM;
 
   TAILQ_FOREACH_REVERSE(c, &interp->stack, cell_list, list) {

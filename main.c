@@ -52,10 +52,13 @@ static char *complete(const char *text, int state) {
 }
 
 static char **texproma_completion(const char *text, int start, int end) {
+  (void)start, (void)end;
   return rl_completion_matches(text, complete);
 }
 
 int main(int argc, char *argv[]) {
+  (void)argc, (void)argv;
+
   interp = tpmi_new(); 
 
   gui_init();

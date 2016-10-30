@@ -71,8 +71,8 @@ static void filter(tpm_mono_buf dst, tpm_mono_buf src,
     for (int x = 0; x < TP_WIDTH; x++) {
       float p = tpm_get_pixel(src, x, y);
 
-      for (int j = 0; j < size; j++)
-        for (int i = 0; i < size; i++) {
+      for (unsigned j = 0; j < size; j++)
+        for (unsigned i = 0; i < size; i++) {
           int k = (x + i - (size >> 1)) & (TP_WIDTH - 1);
           int l = (y + j - (size >> 1)) & (TP_HEIGHT - 1);
           tmp[k + TP_WIDTH * l] += filter[j * size + i] * p;

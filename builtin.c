@@ -164,19 +164,51 @@ static tpmi_status_t do_reset(tpmi_t *interp) {
   return TPMI_OK;
 }
 
+static tpmi_status_t do_load_prog(tpmi_t *interp) {
+  char *filename = stack_top(&interp->stack)->data;
+  FILE *file = fopen(filename, "r");
+
+  if (file == NULL) {
+    ERROR(interp, "could not open '%s' file", filename);
+    return TPMI_ERROR;
+  }
+
+  cell_delete(stack_pop(&interp->stack));
+
+  fseek(file, 0, SEEK_END);
+  long size = ftell(file);
+  rewind(file);
+
+  char *prog = calloc(1, size + 1);
+  fread(prog, size, 1, file);
+  fclose(file);
+
+  return tpmi_compile(interp, prog);
+}
+
+#define FN(name, func, params) \
+  { (name), &(func), (params), false }
+
+#define FN_IMM(name, func, params) \
+  { (name), &(func), (params), true }
+
+#define FN_END \
+  { NULL, NULL, NULL, false }
+
 static fn_ctor_t builtins[] = {
-  { "depth", &do_depth, "" },
-  { "drop", &do_drop, "?" },
-  { "roll", &do_roll, "i" },
-  { "pick", &do_pick, "i" },
-  { "emit", &do_emit, "i" },
-  { "!", &do_store, "?a" },
-  { "@", &do_load, "a" },
-  { ".p", &do_print, "?" },
-  { ".reset", &do_reset, "", true },
-  { ".s", &do_print_stack, "", true },
-  { "?", &do_print_dict, "", true },
-  { NULL }
+  FN("depth", do_depth, ""),
+  FN("drop", do_drop, "?"),
+  FN("roll", do_roll, "i"),
+  FN("pick", do_pick, "i"),
+  FN("load", do_load_prog, "s"),
+  FN("emit", do_emit, "i"),
+  FN("!", do_store, "?a"),
+  FN("@", do_load, "a"),
+  FN(".p", do_print, "?"),
+  FN_IMM(".reset", do_reset, ""),
+  FN_IMM(".s", do_print_stack, ""),
+  FN_IMM("?", do_print_dict, ""),
+  FN_END
 };
 
 static char *initprog[] = {
@@ -199,46 +231,46 @@ static char *initprog[] = {
 };
 
 static fn_ctor_t cfuncs[] = {
-  { "insert", &tpm_insert, "<>cmi" },
-  { "extract", &tpm_extract, "<>c>mi" },
-  { "explode", &tpm_explode, ">m>m>mc" },
-  { "implode", &tpm_implode, ">cmmm" },
-  { "save-mono", &tpm_mono_buf_save, "ms" },
-  { "save-color", &tpm_color_buf_save, "cs" },
-  { "sine", &tpm_sine, ">mf" },
-  { "noise", &tpm_noise, ">mii" },
-  { "plasma", &tpm_plasma, ">m" },
-  { "light", &tpm_light, ">mif" },
-  { "perlin-noise", &tpm_perlin_noise, ">mi" },
-  { "add", &tpm_add, ">@m@m@m" },
-  { "mul", &tpm_mul, ">@m@m@m" },
-  { "mix", &tpm_mix, ">@m@m@mi" },
-  { "max", &tpm_max, ">@m@m@m" },
-  { "shade", &tpm_shade, ">mmm" },
-  { "mix-map", &tpm_mix_map, ">mmmm" },
-  { "repeat", &tpm_repeat, ">@m@mii" },
-  { "flip", &tpm_flip, ">@m@m" },
-  { "rotate", &tpm_rotate, ">@m@m" },
-  { "twist", &tpm_twist, ">@m@mf" },
-  { "move", &tpm_move, ">@m@mff" },
-  { "distort", &tpm_distort, ">@m@mmmff" },
-  { "invert", &tpm_invert, ">@m@m" },
-  { "sine-color", &tpm_sine_color, ">@m@mi" },
-  { "hsv-modify", &tpm_hsv_modify, ">ccff" },
-  { "brightness", &tpm_brightness, ">@m@mf" },
-  { "contrast", &tpm_contrast, ">@m@mf" },
-  { "colorize", &tpm_colorize, ">cmii" },
-  { "grayscale", &tpm_grayscale, ">mc" },
-  { "blur-3x3", &tpm_blur_3x3, ">@m@m" },
-  { "blur-5x5", &tpm_blur_5x5, ">@m@m" },
-  { "gaussian-3x3", &tpm_gaussian_3x3, ">@m@m" },
-  { "gaussian-5x5", &tpm_gaussian_5x5, ">@m@m" },
-  { "sharpen", &tpm_sharpen, ">@m@m" },
-  { "emboss", &tpm_emboss, ">@m@m" },
-  { "edges", &tpm_edges, ">@m@m" },
-  { "median-3x3", &tpm_median_3x3, ">@m@m" },
-  { "median-5x5", &tpm_median_5x5, ">@m@m" },
-  { NULL }
+  FN("insert", tpm_insert, "<>cmi"),
+  FN("extract", tpm_extract, "<>c>mi"),
+  FN("explode", tpm_explode, ">m>m>mc"),
+  FN("implode", tpm_implode, ">cmmm"),
+  FN("save-mono", tpm_mono_buf_save, "ms"),
+  FN("save-color", tpm_color_buf_save, "cs"),
+  FN("sine", tpm_sine, ">mf"),
+  FN("noise", tpm_noise, ">mii"),
+  FN("plasma", tpm_plasma, ">m"),
+  FN("light", tpm_light, ">mif"),
+  FN("perlin-noise", tpm_perlin_noise, ">mi"),
+  FN("add", tpm_add, ">@m@m@m"),
+  FN("mul", tpm_mul, ">@m@m@m"),
+  FN("mix", tpm_mix, ">@m@m@mi"),
+  FN("max", tpm_max, ">@m@m@m"),
+  FN("shade", tpm_shade, ">mmm"),
+  FN("mix-map", tpm_mix_map, ">mmmm"),
+  FN("repeat", tpm_repeat, ">@m@mii"),
+  FN("flip", tpm_flip, ">@m@m"),
+  FN("rotate", tpm_rotate, ">@m@m"),
+  FN("twist", tpm_twist, ">@m@mf"),
+  FN("move", tpm_move, ">@m@mff"),
+  FN("distort", tpm_distort, ">@m@mmmff"),
+  FN("invert", tpm_invert, ">@m@m"),
+  FN("sine-color", tpm_sine_color, ">@m@mi"),
+  FN("hsv-modify", tpm_hsv_modify, ">ccff"),
+  FN("brightness", tpm_brightness, ">@m@mf"),
+  FN("contrast", tpm_contrast, ">@m@mf"),
+  FN("colorize", tpm_colorize, ">cmii"),
+  FN("grayscale", tpm_grayscale, ">mc"),
+  FN("blur-3x3", tpm_blur_3x3, ">@m@m"),
+  FN("blur-5x5", tpm_blur_5x5, ">@m@m"),
+  FN("gaussian-3x3", tpm_gaussian_3x3, ">@m@m"),
+  FN("gaussian-5x5", tpm_gaussian_5x5, ">@m@m"),
+  FN("sharpen", tpm_sharpen, ">@m@m"),
+  FN("emboss", tpm_emboss, ">@m@m"),
+  FN("edges", tpm_edges, ">@m@m"),
+  FN("median-3x3", tpm_median_3x3, ">@m@m"),
+  FN("median-5x5", tpm_median_5x5, ">@m@m"),
+  FN_END
 };
 
 void tpmi_init(tpmi_t *interp) {

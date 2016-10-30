@@ -24,13 +24,14 @@ env = Environment()
 
 if platform.system() == 'Darwin':
     env['ENV']['PATH'] = ['/opt/local/bin', '/usr/bin', '/bin']
+    env.Replace(CC = 'clang')
 
 env['BUILDERS']['ctags'] = \
     SCons.Builder.Builder(action='ctags --tag-relative=yes -f $TARGET $SOURCES')
 
 # --=[ Configuration ]=--------------------------------------------------------
 
-env.Append(CCFLAGS = '-g -O2 -Wall')
+env.Append(CCFLAGS = '-g -O2 -Wall -Wextra')
 env.Append(LINKFLAGS = '-g')
 
 conf = Configure(env)

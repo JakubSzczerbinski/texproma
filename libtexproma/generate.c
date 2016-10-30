@@ -85,7 +85,7 @@ void tpm_noise(tpm_mono_buf dst, unsigned step, unsigned seed) {
       float t1 = 0.5f * (p0 + p1);
       float t2 = 0.5f * (p1 + p3);
 
-      for (int i = 0; i < n; i++)
+      for (unsigned i = 0; i < n; i++)
         tpm_put_pixel(dst, x, y + i,
                       tpm_bezier_interpolate(i * ds, p1, p2, t1, t2));
     }
@@ -104,7 +104,7 @@ void tpm_noise(tpm_mono_buf dst, unsigned step, unsigned seed) {
       float t1 = 0.5f * (p0 + p1);
       float t2 = 0.5f * (p1 + p3);
 
-      for (int i = 0; i < n; i++)
+      for (unsigned i = 0; i < n; i++)
         tpm_put_pixel(dst, x + i, y,
                       tpm_bezier_interpolate(i * ds, p1, p2, t1, t2));
     }
