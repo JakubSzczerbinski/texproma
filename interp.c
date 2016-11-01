@@ -284,44 +284,148 @@ void tpmi_delete(tpmi_t *interp) {
   free(interp);
 }
 
-static bool read_float(const char *str, unsigned span, float *f) {
+static bool read_float(const char *str, float *f) {
   char *end;
   *f = strtof(str, &end);
-  return end == str + span;
+  return *end == '\0';
 }
 
-static bool read_int(const char *str, unsigned span, int *i) {
+static bool read_int(const char *str, int *i) {
   char *end;
   bool hex = (str[0] == '0' && tolower(str[1]) == 'x');
   *i = strtol(hex ? str + 2 : str, &end, hex ? 16 : 10);
-  return end == str + span;
+  return *end == '\0';
 }
 
-static cell_t make_cell(const char *line, unsigned span) {
+static cell_t make_cell(const char *token) {
   int i; float f;
+  int n = strlen(token);
 
-  if (read_int(line, span, &i))
+  if (read_int(token, &i))
     return DEF_INT(i);
-  if (read_float(line, span, &f))
+  if (read_float(token, &f))
     return DEF_FLOAT(f);
-  if (line[0] == '"' && line[span - 1] == '"')
-    return DEF_STRING(strndup(line + 1, span - 2));
-  return DEF_ATOM(strndup(line, span));
+  if (token[0] == '"' && token[n - 1] == '"')
+    return DEF_STRING(strndup(token + 1, n - 2));
+  return DEF_ATOM(strdup(token));
 }
 
-tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
+static tpmi_status_t tpmi_compile_token(tpmi_t *interp, const char *token) {
+  tpmi_status_t status = TPMI_OK;
+
+  cell_t c = make_cell(token);
+
+  interp->last_word = NULL;
+
+  switch (*interp->mode) {
+    case TPMI_EVAL: 
+      /* evaluation mode */
+      status = TPMI_NEED_MORE;
+
+      if (strcmp(token, ":") == 0) {
+        *interp->mode = TPMI_COMPILE;
+        interp->curr_word = NULL;
+      } else if (strcmp(token, "'") == 0)
+        *interp->mode = TPMI_FUNCREF;
+      else if (strcasecmp(token, "variable") == 0)
+        *interp->mode = TPMI_DEFVAR;
+      else if (strcasecmp(token, "immediate") == 0) {
+        if (interp->curr_word != NULL)
+          interp->curr_word->immediate = true;
+        status = TPMI_OK;
+      } else
+        status = eval_cell(interp, &c);
+      break;
+
+    case TPMI_COMPILE:
+      /* compilation mode */
+
+      if (strcmp(token, ";") == 0) {
+        *interp->mode = TPMI_EVAL;
+        status = TPMI_OK;
+      } else if (interp->curr_word == NULL) {
+        if (c.type == CT_ATOM) {
+          entry_t *entry = dict_add(interp->words, c.atom); 
+
+          if (entry->word == NULL) {
+            word_t *word = calloc(1, sizeof(word_t));
+            word->type = WT_DEF;
+            word->value = CT_LIST->new();
+            word->immediate = false;
+            interp->curr_word = entry->word = word;
+            status = TPMI_NEED_MORE;
+          } else {
+            ERROR(interp, "word '%s' has been already defined", c.atom);
+            status = TPMI_ERROR;
+          }
+        } else {
+          ERROR(interp, "expected word name");
+          status = TPMI_ERROR;
+        }
+      } else {
+        if (c.type == CT_ATOM && 
+            dict_add(interp->words, c.atom)->word->immediate) {
+          status = eval_cell(interp, &c);
+        } else {
+          stack_push(&interp->curr_word->value->head, cell_copy(&c));
+          status = TPMI_NEED_MORE;
+        }
+      }
+      break;
+
+    case TPMI_DEFVAR:
+      *interp->mode = TPMI_EVAL;
+
+      if (c.type == CT_ATOM) {
+        dict_add(interp->words, c.atom)->word->type = WT_VAR;
+        status = TPMI_OK;
+      } else {
+        ERROR(interp, "'variable' expects name");
+        status = TPMI_ERROR;
+      }
+      break;
+
+    case TPMI_FUNCREF:
+      *interp->mode = TPMI_EVAL;
+      status = TPMI_ERROR;
+
+      if (c.type == CT_ATOM)
+        if (dict_add(interp->words, c.atom)->word->type == WT_CFUNC) {
+          stack_push(&interp->stack, cell_copy(&c));
+          status = TPMI_OK;
+        }
+
+      if (status == TPMI_ERROR)
+        ERROR(interp, "'tick' expects C function name");
+      break;
+  }
+
+  if (interp->ready && status != TPMI_ERROR) {
+    if (!(interp->last_word && interp->last_word->immediate))
+      ARRAY_APPEND(&interp->tokens, strdup(token));
+    if (interp->last_word && interp->last_word->type == WT_CFUNC)
+      ARRAY_APPEND(&interp->tokens, NULL);
+  }
+
+  if ((c.type != NULL) && (c.type->delete != NULL))
+    c.type->delete(&c);
+
+  return status;
+}
+
+tpmi_status_t tpmi_compile(tpmi_t *interp, const char *prog) {
   tpmi_status_t status = TPMI_OK;
   unsigned n = 0;
 
   while (true) {
     /* skip spaces */
-    line += strspn(line, " \t\n");
+    prog += strspn(prog, " \t\n");
 
     /* find token */
-    unsigned len;
+    unsigned toklen;
 
-    if (*line == '"') {
-      char *closing = strchr(line + 1, '"');
+    if (*prog == '"') {
+      char *closing = strchr(prog + 1, '"');
 
       if (closing == NULL) {
         ERROR(interp, "missing closing quote character");
@@ -329,113 +433,21 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
         goto error;
       }
 
-      len = closing + 1 - line;
+      toklen = closing + 1 - prog;
     } else {
-      len = strcspn(line, " \t\n");
+      toklen = strcspn(prog, " \t\n");
     }
 
-    if (len == 0)
+    if (toklen == 0)
       break;
 
-    /* parse token */
-    cell_t c = make_cell(line, len);
+    char *token;
+    
+    token = strndup(prog, toklen);
+    status = tpmi_compile_token(interp, token);
+    free(token);
 
-    interp->last_word = NULL;
-
-    switch (*interp->mode) {
-      case TPMI_EVAL: 
-        /* evaluation mode */
-        status = TPMI_NEED_MORE;
-
-        if (strncmp(line, ":", len) == 0) {
-          *interp->mode = TPMI_COMPILE;
-          interp->curr_word = NULL;
-        } else if (strncmp(line, "'", len) == 0)
-          *interp->mode = TPMI_FUNCREF;
-        else if (strncasecmp(line, "variable", len) == 0)
-          *interp->mode = TPMI_DEFVAR;
-        else if (strncasecmp(line, "immediate", len) == 0) {
-          if (interp->curr_word != NULL)
-            interp->curr_word->immediate = true;
-          status = TPMI_OK;
-        } else
-          status = eval_cell(interp, &c);
-        break;
-
-      case TPMI_COMPILE:
-        /* compilation mode */
-
-        if (strncmp(line, ";", len) == 0) {
-          *interp->mode = TPMI_EVAL;
-          status = TPMI_OK;
-        } else if (interp->curr_word == NULL) {
-          if (c.type == CT_ATOM) {
-            entry_t *entry = dict_add(interp->words, c.atom); 
-
-            if (entry->word == NULL) {
-              word_t *word = calloc(1, sizeof(word_t));
-              word->type = WT_DEF;
-              word->value = CT_LIST->new();
-              word->immediate = false;
-              interp->curr_word = entry->word = word;
-              status = TPMI_NEED_MORE;
-            } else {
-              ERROR(interp, "word '%s' has been already defined", c.atom);
-              status = TPMI_ERROR;
-            }
-          } else {
-            ERROR(interp, "expected word name");
-            status = TPMI_ERROR;
-          }
-        } else {
-          if (c.type == CT_ATOM && 
-              dict_add(interp->words, c.atom)->word->immediate) {
-            status = eval_cell(interp, &c);
-          } else {
-            stack_push(&interp->curr_word->value->head, cell_copy(&c));
-            status = TPMI_NEED_MORE;
-          }
-        }
-        break;
-
-      case TPMI_DEFVAR:
-        *interp->mode = TPMI_EVAL;
-
-        if (c.type == CT_ATOM) {
-          dict_add(interp->words, c.atom)->word->type = WT_VAR;
-          status = TPMI_OK;
-        } else {
-          ERROR(interp, "'variable' expects name");
-          status = TPMI_ERROR;
-        }
-        break;
-
-      case TPMI_FUNCREF:
-        *interp->mode = TPMI_EVAL;
-        status = TPMI_ERROR;
-
-        if (c.type == CT_ATOM)
-          if (dict_add(interp->words, c.atom)->word->type == WT_CFUNC) {
-            stack_push(&interp->stack, cell_copy(&c));
-            status = TPMI_OK;
-          }
-
-        if (status == TPMI_ERROR)
-          ERROR(interp, "'tick' expects C function name");
-        break;
-    }
-
-    if (interp->ready && status != TPMI_ERROR) {
-      if (!(interp->last_word && interp->last_word->immediate))
-        ARRAY_APPEND(&interp->tokens, strndup(line, len));
-      if (interp->last_word && interp->last_word->type == WT_CFUNC)
-        ARRAY_APPEND(&interp->tokens, NULL);
-    }
-
-    line += len;
-
-    if ((c.type != NULL) && (c.type->delete != NULL))
-      c.type->delete(&c);
+    prog += toklen;
 
 error:
 
@@ -445,8 +457,9 @@ error:
       break;
     }
 
-    if (status == TPMI_RESET)
+    if (status == TPMI_RESET) {
       tpmi_reset(interp);
+    }
   }
 
   return status;
