@@ -38,6 +38,8 @@ static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
       return TPMI_ERROR;
     }
 
+    interp->last_word = entry->word;
+
     if (entry->word->type != WT_VAR)
       return eval_word(interp, entry);
   }
@@ -259,8 +261,8 @@ extern void tpmi_init(tpmi_t *interp);
 tpmi_t *tpmi_new() {
   tpmi_t *interp = calloc(1, sizeof(tpmi_t));
   TAILQ_INIT(&interp->stack);
+  ARRAY_INIT(&interp->tokens);
   interp->words = dict_new();
-  interp->reset = false;
 
   tpmi_init(interp);
 
@@ -268,7 +270,6 @@ tpmi_t *tpmi_new() {
 }
 
 void tpmi_reset(tpmi_t *interp) {
-  interp->reset = false;
   interp->mode = NULL;
   interp->curr_word = NULL;
 
@@ -300,13 +301,12 @@ static cell_t make_cell(const char *line, unsigned span) {
   int i; float f;
 
   if (read_int(line, span, &i))
-    return (cell_t){CT_INT, {.i = i}, {NULL, NULL}};
+    return DEF_INT(i);
   if (read_float(line, span, &f))
-    return (cell_t){CT_FLOAT, {.f = f}, {NULL, NULL}};
+    return DEF_FLOAT(f);
   if (line[0] == '"' && line[span - 1] == '"')
-    return (cell_t){CT_STRING, {.atom = strndup(line + 1, span - 2)},
-                    {NULL, NULL}};
-  return (cell_t){CT_ATOM, {.data = strndup(line, span)}, {NULL, NULL}};
+    return DEF_STRING(strndup(line + 1, span - 2));
+  return DEF_ATOM(strndup(line, span));
 }
 
 tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
@@ -339,6 +339,8 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
 
     /* parse token */
     cell_t c = make_cell(line, len);
+
+    interp->last_word = NULL;
 
     switch (*interp->mode) {
       case TPMI_EVAL: 
@@ -423,6 +425,13 @@ tpmi_status_t tpmi_compile(tpmi_t *interp, const char *line) {
         break;
     }
 
+    if (interp->ready && status != TPMI_ERROR) {
+      if (!(interp->last_word && interp->last_word->immediate))
+        ARRAY_APPEND(&interp->tokens, strndup(line, len));
+      if (interp->last_word && interp->last_word->type == WT_CFUNC)
+        ARRAY_APPEND(&interp->tokens, NULL);
+    }
+
     line += len;
 
     if ((c.type != NULL) && (c.type->delete != NULL))
@@ -436,7 +445,7 @@ error:
       break;
     }
 
-    if (interp->reset)
+    if (status == TPMI_RESET)
       tpmi_reset(interp);
   }
 

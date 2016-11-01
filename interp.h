@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "cell.h"
+#include "array.h"
 #include "dict.h"
 
 static inline cell_t *stack_top(cell_list_t *stack) {
@@ -22,9 +23,13 @@ static inline void stack_push(cell_list_t *stack, cell_t *c) {
 
 cell_t *stack_get_nth(cell_list_t *stack, unsigned n);
 
+/* Tokens */
+
+typedef ARRAY(char *) tokens_t;
+
 /* TEXture PROcessing MAchine interpeter */
 
-typedef enum { TPMI_ERROR, TPMI_OK, TPMI_NEED_MORE } tpmi_status_t;
+typedef enum { TPMI_ERROR, TPMI_OK, TPMI_NEED_MORE, TPMI_RESET } tpmi_status_t;
 typedef enum { TPMI_EVAL, TPMI_COMPILE, TPMI_DEFVAR, TPMI_FUNCREF } tpmi_mode_t;
 
 #define ERRMSG_LENGTH 128
@@ -37,9 +42,11 @@ typedef struct tpmi {
   dict_t *words;        /* word dictionary */
 
   char errmsg[ERRMSG_LENGTH];
-  bool reset;           /* if true then please reset interpreter */
+  bool ready;           /* false when interpreter is being initialized */
   tpmi_mode_t *mode;    /* current working mode */
   word_t *curr_word;    /* word being compiled now */
+  word_t *last_word;    /* set if last token was processed as word */
+  tokens_t tokens;      /* program listing */
 } tpmi_t;
 
 typedef tpmi_status_t (*tpmi_fn_t)(tpmi_t *);

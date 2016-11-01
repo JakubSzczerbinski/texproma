@@ -4,6 +4,7 @@
 #include "libtexproma.h"
 #include "word.h"
 #include "interp.h"
+#include "array.h"
 
 static tpmi_status_t do_print(tpmi_t *interp) {
   cell_t *c = stack_top(&interp->stack);
@@ -91,7 +92,7 @@ static tpmi_status_t do_emit(tpmi_t *interp) {
   return do_drop(interp);
 }
 
-static tpmi_status_t do_print_stack(tpmi_t *interp) {
+tpmi_status_t do_print_stack(tpmi_t *interp) {
   unsigned n = clist_length(&interp->stack);
   cell_t *c;
   TAILQ_FOREACH(c, &interp->stack, list) {
@@ -159,8 +160,34 @@ static tpmi_status_t do_store(tpmi_t *interp) {
   return TPMI_OK;
 }
 
-static tpmi_status_t do_reset(tpmi_t *interp) {
-  interp->reset = true;
+static tpmi_status_t do_reset_prog(tpmi_t *interp) {
+  char **token_p;
+  ARRAY_FOREACH(token_p, &interp->tokens) {
+    free(*token_p);
+  }
+  ARRAY_RESIZE(&interp->tokens, 0);
+
+  return TPMI_RESET;
+}
+
+static tpmi_status_t do_list_prog(tpmi_t *interp) {
+  unsigned n = 0;
+  bool newline = true;
+  char **token_p;
+
+  ARRAY_FOREACH(token_p, &interp->tokens) {
+    if (newline) {
+      fprintf(stderr, "%3u:", ++n);
+      newline = false;
+    }
+    if (*token_p == NULL) {
+      putc('\n', stderr);
+      newline = true;
+    } else {
+      fprintf(stderr, " %s", *token_p);
+    }
+  }
+
   return TPMI_OK;
 }
 
@@ -186,6 +213,26 @@ static tpmi_status_t do_load_prog(tpmi_t *interp) {
   return tpmi_compile(interp, prog);
 }
 
+static tpmi_status_t do_undo_prog(tpmi_t *interp) {
+  int n = interp->tokens.size - 1;
+
+  if (n >= 0) {
+    if (*ARRAY_AT(&interp->tokens, n) == NULL)
+      n--;
+
+    do {
+      char **token_p = ARRAY_AT(&interp->tokens, n);
+      if (*token_p == NULL)
+        break;
+      free(*token_p);
+    } while (--n >= 0);
+
+    ARRAY_RESIZE(&interp->tokens, n + 1);
+  }
+
+  return TPMI_RESET;
+}
+
 #define FN(name, func, params) \
   { (name), &(func), (params), false }
 
@@ -205,7 +252,9 @@ static fn_ctor_t builtins[] = {
   FN("!", do_store, "?a"),
   FN("@", do_load, "a"),
   FN(".p", do_print, "?"),
-  FN_IMM(".reset", do_reset, ""),
+  FN_IMM(".reset", do_reset_prog, ""),
+  FN_IMM(".list", do_list_prog, ""),
+  FN_IMM(".undo", do_undo_prog, ""),
   FN_IMM(".s", do_print_stack, ""),
   FN_IMM("?", do_print_dict, ""),
   FN_END
@@ -274,6 +323,8 @@ static fn_ctor_t cfuncs[] = {
 };
 
 void tpmi_init(tpmi_t *interp) {
+  interp->ready = false;
+
   /* Initialize builtin words */
   for (fn_ctor_t *builtin = builtins; builtin->id; builtin++) {
     word_t *word = calloc(1, sizeof(word_t));
@@ -304,4 +355,13 @@ void tpmi_init(tpmi_t *interp) {
   /* Compile initial program */
   for (char **line = initprog; *line; line++)
     tpmi_compile(interp, *line);
+
+  /* Re-execute user's program if non-empty */
+  char **token_p;
+  ARRAY_FOREACH(token_p, &interp->tokens) {
+    if (*token_p)
+      tpmi_compile(interp, *token_p);
+  }
+
+  interp->ready = true;
 }

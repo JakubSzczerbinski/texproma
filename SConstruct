@@ -76,7 +76,7 @@ env.Prepend(LIBS = ['texproma'])
 env.Prepend(LIBPATH = ['libtexproma'])
 env.Prepend(CPPPATH = ['libtexproma'])
 
-sources = ['main.c', 'cell.c', 'fn.c', 'word.c', 'dict.c',
+sources = ['main.c', 'cell.c', 'fn.c', 'word.c', 'dict.c', 'array.c',
            'builtin.c', 'gui.c', 'interp.c']
 
 if not env['HAVE_STRNDUP']:

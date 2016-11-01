@@ -46,6 +46,15 @@ struct cell {
   TAILQ_ENTRY(cell) list;
 };
 
+#define DEF_INT(i) \
+  (cell_t){CT_INT, {.i = (i)}, {NULL, NULL}}
+#define DEF_FLOAT(f) \
+  (cell_t){CT_FLOAT, {.f = (f)}, {NULL, NULL}}
+#define DEF_STRING(s) \
+  (cell_t){CT_STRING, {.atom = (s)}, {NULL, NULL}}
+#define DEF_ATOM(a) \
+  (cell_t){CT_ATOM, {.data = (a)}, {NULL, NULL}}
+
 cell_t *cell_copy(cell_t *c);
 void cell_swap(cell_t *c1, cell_t *c2);
 void cell_delete(cell_t *c);
