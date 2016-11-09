@@ -83,6 +83,7 @@ static inline void clist_remove(cell_list_t *clist, cell_t *c) {
 
 void clist_copy(cell_list_t *ncl, cell_list_t *ocl);
 unsigned clist_length(cell_list_t *clist);
+cell_t *clist_get_nth(cell_list_t *clist, unsigned n);
 void clist_reset(cell_list_t *clist);
 
 #endif

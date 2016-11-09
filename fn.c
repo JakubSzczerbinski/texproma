@@ -62,12 +62,13 @@ static void sig_decode(const char *sig, fn_arg_t *arg) {
   }
 }
 
-fn_t *new_fn(fn_ctor_t *ctor) {
+fn_t *new_fn(fn_ctor_t *ctor, bool builtin) {
   unsigned n = sig_length(ctor->sig);
   fn_t *fn = calloc(1, sizeof(fn_t) + n * sizeof(fn_arg_t));
 
   fn->ptr = ctor->ptr;
   fn->count = n;
+  fn->builtin = builtin;
 
   sig_decode(ctor->sig, fn->args);
 

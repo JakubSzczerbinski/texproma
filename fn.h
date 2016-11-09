@@ -19,6 +19,7 @@ typedef struct {
 typedef struct {
   void (*ptr)();
   unsigned count;
+  bool builtin;
   fn_arg_t args[0];
 } fn_t;
 
@@ -29,7 +30,7 @@ typedef struct {
   bool immediate;
 } fn_ctor_t;
 
-fn_t *new_fn(fn_ctor_t *ctor);
+fn_t *new_fn(fn_ctor_t *ctor, bool builtin);
 void fn_sig_print(const fn_t *fn);
 unsigned fn_arg_count(const fn_t *fn, fn_arg_flags_t flags);
 

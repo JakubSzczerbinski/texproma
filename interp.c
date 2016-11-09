@@ -13,21 +13,8 @@
 
 #include "libtexproma.h"
 
-cell_t *stack_get_nth(cell_list_t *stack, unsigned n) {
-  if (TAILQ_EMPTY(stack))
-    return NULL;
-
-  cell_t *c;
-  TAILQ_FOREACH_REVERSE(c, stack, cell_list, list) {
-    if (n == 0)
-      return c;
-    n--;
-  }
-
-  return NULL;
-}
-
 static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry);
+static tpmi_status_t eval_directive(tpmi_t *interp);
 
 static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
   if (c->type == CT_ATOM) {
@@ -39,6 +26,12 @@ static tpmi_status_t eval_cell(tpmi_t *interp, cell_t *c) {
     }
 
     interp->last_word = entry->word;
+
+    if (entry->word->type == WT_DRCT) {
+      clist_append(&interp->curr_drct, cell_copy(c));
+      interp->args_drct = entry->word->value->fn->count;
+      return (interp->args_drct == 0) ? eval_directive(interp) : TPMI_OK;
+    }
 
     if (entry->word->type != WT_VAR)
       return eval_word(interp, entry);
@@ -53,7 +46,9 @@ typedef struct arg_info {
   cell_list_t args;
 } arg_info_t;
 
-static bool check_func_args(tpmi_t *interp, entry_t *entry, arg_info_t *ai) {
+static tpmi_status_t check_func_args(tpmi_t *interp, entry_t *entry,
+                                     cell_list_t *stack, arg_info_t *ai)
+{
   fn_t *fn = entry->word->value->fn;
   unsigned args = fn_arg_count(fn, ARG_INPUT);
 
@@ -61,20 +56,20 @@ static bool check_func_args(tpmi_t *interp, entry_t *entry, arg_info_t *ai) {
   ai->do_color = false;
 
   if (args == 0)
-    return true;
+    return TPMI_OK;
 
-  cell_t *arg = stack_get_nth(&interp->stack, args - 1);
+  cell_t *arg = clist_get_nth(stack, args - 1);
 
   if (arg == NULL) {
     ERROR(interp, "'%s' expected %u args, but stack has %u elements",
-          entry->key, args, clist_length(&interp->stack));
-    return false;
+          entry->key, args, clist_length(stack));
+    return TPMI_ERROR;
   }
 
   /* move arguments from stack to arg_info */
   for (unsigned i = 0; i < args; i++) {
     cell_t *next = clist_next(arg);
-    clist_remove(&interp->stack, arg);
+    clist_remove(stack, arg);
     clist_append(&ai->args, arg);
     arg = next;
   }
@@ -105,8 +100,8 @@ static bool check_func_args(tpmi_t *interp, entry_t *entry, arg_info_t *ai) {
           ERROR(interp, "'%s' argument %u type mismatch - expected "
                 BOLD "%s" RESET ", got " BOLD "%s" RESET,
                 entry->key, j, fn_arg->type->name, arg->type->name);
-          TAILQ_CONCAT(&interp->stack, &ai->args, list);
-          return false;
+          TAILQ_CONCAT(stack, &ai->args, list);
+          return TPMI_ERROR;
         }
       }
       arg = clist_next(arg);
@@ -114,21 +109,28 @@ static bool check_func_args(tpmi_t *interp, entry_t *entry, arg_info_t *ai) {
     }
   }
 
-  return true;
+  return TPMI_OK;
 }
 
-static void call_func(fn_t *fn, cell_list_t *args, cell_list_t *res)
+static tpmi_status_t call_func(tpmi_t *interp, fn_t *fn, cell_list_t *args,
+                               cell_list_t *res)
 {
-  unsigned n = fn_arg_count(fn, ARG_INPUT|ARG_OUTPUT);
+  unsigned k = fn->builtin ? 1 : 0;
+  unsigned n = fn_arg_count(fn, ARG_INPUT|ARG_OUTPUT) + k;
 
   /* construct a call */
-  ffi_type *arg_ctype[n];
-  void *arg_value[n];
+  ffi_type *arg_ctype[n + k];
+  void *arg_value[n + k];
+
+  if (fn->builtin) {
+    arg_ctype[0] = &ffi_type_pointer;
+    arg_value[0] = &interp;
+  }
 
   cell_t *arg = clist_first(args);
 
-  for (unsigned i = 0; i < n; i++) {
-    const fn_arg_t *fn_arg = &fn->args[i];
+  for (unsigned i = k; i < n; i++) {
+    const fn_arg_t *fn_arg = &fn->args[i - k];
 
     if (fn_arg->flags & ARG_INPUT) {
       if (fn_arg->type == CT_INT) {
@@ -173,19 +175,24 @@ static void call_func(fn_t *fn, cell_list_t *args, cell_list_t *res)
 
   ffi_cif cif;
   ffi_arg result;
+  ffi_type *result_ctype = fn->builtin ? &ffi_type_sint : &ffi_type_void;
 
   assert(ffi_prep_cif(&cif, FFI_DEFAULT_ABI,
-                      n, &ffi_type_void, arg_ctype) == FFI_OK);
+                      n, result_ctype, arg_ctype) == FFI_OK);
 
   ffi_call(&cif, FFI_FN(fn->ptr), &result, arg_value);
+
+  return fn->builtin ? result : TPMI_OK;
 }
 
 static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
   word_t *word = entry->word;
 
+  assert(word->type != WT_DRCT);
+
   if (word->type == WT_BUILTIN) {
     arg_info_t ai;
-    if (!check_func_args(interp, entry, &ai))
+    if (!check_func_args(interp, entry, &interp->stack, &ai))
       return TPMI_ERROR;
     TAILQ_CONCAT(&interp->stack, &ai.args, list);
     return ((tpmi_fn_t)word->value->fn->ptr)(interp);
@@ -204,7 +211,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
     fn_t *fn = word->value->fn;
     arg_info_t ai;
 
-    if (!check_func_args(interp, entry, &ai))
+    if (!check_func_args(interp, entry, &interp->stack, &ai))
       return TPMI_ERROR;
 
     if (ai.do_color) {
@@ -231,7 +238,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
             arg = clist_next(arg);
           }
         }
-        call_func(fn, &args, &res);
+        (void)call_func(interp, fn, &args, &res);
         clist_reset(&args);
       }
 
@@ -245,7 +252,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
 
       clist_reset(&res);
     } else {
-      call_func(fn, &ai.args, &interp->stack);
+      (void)call_func(interp, fn, &ai.args, &interp->stack);
     }
 
     clist_reset(&ai.args);
@@ -256,11 +263,33 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
   abort();
 }
 
+static tpmi_status_t eval_directive(tpmi_t *interp) {
+  cell_t *drct = TAILQ_FIRST(&interp->curr_drct);
+  entry_t *entry = dict_find(interp->words, drct->atom);
+
+  TAILQ_REMOVE(&interp->curr_drct, drct, list);
+
+  arg_info_t ai;
+
+  if (!check_func_args(interp, entry, &interp->curr_drct, &ai))
+    return TPMI_ERROR;
+
+  tpmi_status_t status = call_func(interp, entry->word->value->fn,
+                                   &ai.args, &interp->curr_drct);
+
+  cell_delete(drct);
+  clist_reset(&ai.args);
+  clist_reset(&interp->curr_drct);
+
+  return status;
+}
+
 extern void tpmi_init(tpmi_t *interp);
 
 tpmi_t *tpmi_new() {
   tpmi_t *interp = calloc(1, sizeof(tpmi_t));
   TAILQ_INIT(&interp->stack);
+  TAILQ_INIT(&interp->curr_drct);
   ARRAY_INIT(&interp->tokens);
   interp->words = dict_new();
 
@@ -272,13 +301,16 @@ tpmi_t *tpmi_new() {
 void tpmi_reset(tpmi_t *interp) {
   interp->mode = NULL;
   interp->curr_word = NULL;
+  interp->args_drct = 0;
 
+  clist_reset(&interp->curr_drct);
   clist_reset(&interp->stack);
   dict_reset(interp->words);
   tpmi_init(interp);
 }
 
 void tpmi_delete(tpmi_t *interp) {
+  clist_reset(&interp->curr_drct);
   clist_reset(&interp->stack);
   dict_delete(interp->words);
   free(interp);
@@ -310,10 +342,22 @@ static cell_t make_cell(const char *token) {
   return DEF_ATOM(strdup(token));
 }
 
+static void cell_dispose(cell_t *c) {
+  if ((c->type != NULL) && (c->type->delete != NULL))
+    c->type->delete(c);
+}
+
 static tpmi_status_t tpmi_compile_token(tpmi_t *interp, const char *token) {
   tpmi_status_t status = TPMI_OK;
 
   cell_t c = make_cell(token);
+
+  if (interp->args_drct > 0) {
+    clist_append(&interp->curr_drct, cell_copy(&c));
+    interp->args_drct--;
+    cell_dispose(&c);
+    return (interp->args_drct == 0) ? eval_directive(interp) : TPMI_NEED_MORE;
+  }
 
   interp->last_word = NULL;
 
@@ -378,7 +422,6 @@ static tpmi_status_t tpmi_compile_token(tpmi_t *interp, const char *token) {
 
       if (c.type == CT_ATOM) {
         dict_add(interp->words, c.atom)->word->type = WT_VAR;
-        status = TPMI_OK;
       } else {
         ERROR(interp, "'variable' expects name");
         status = TPMI_ERROR;
@@ -387,29 +430,33 @@ static tpmi_status_t tpmi_compile_token(tpmi_t *interp, const char *token) {
 
     case TPMI_FUNCREF:
       *interp->mode = TPMI_EVAL;
-      status = TPMI_ERROR;
 
-      if (c.type == CT_ATOM)
-        if (dict_add(interp->words, c.atom)->word->type == WT_CFUNC) {
-          stack_push(&interp->stack, cell_copy(&c));
-          status = TPMI_OK;
-        }
-
-      if (status == TPMI_ERROR)
+      if ((c.type != CT_ATOM) ||
+          (dict_add(interp->words, c.atom)->word->type != WT_CFUNC)) {
         ERROR(interp, "'tick' expects C function name");
+        status = TPMI_ERROR;
+      } else {
+        stack_push(&interp->stack, cell_copy(&c));
+      }
       break;
   }
 
   if (interp->ready && status != TPMI_ERROR) {
-    if (!(interp->last_word && interp->last_word->immediate))
+    word_t *word = interp->last_word;
+
+    bool immediate = word && word->immediate;
+    bool cfunc = word && (word->type == WT_CFUNC);
+    bool directive = word && (word->type == WT_DRCT);
+
+    if (!immediate && !directive)
       ARRAY_APPEND(&interp->tokens, strdup(token));
-    if (interp->last_word && interp->last_word->type == WT_CFUNC)
+
+    /* Save marker for undo operation. */
+    if (cfunc)
       ARRAY_APPEND(&interp->tokens, NULL);
   }
 
-  if ((c.type != NULL) && (c.type->delete != NULL))
-    c.type->delete(&c);
-
+  cell_dispose(&c);
   return status;
 }
 

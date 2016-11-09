@@ -42,11 +42,14 @@ typedef struct tpmi {
   dict_t *words;        /* word dictionary */
 
   char errmsg[ERRMSG_LENGTH];
-  bool ready;           /* false when interpreter is being initialized */
-  tpmi_mode_t *mode;    /* current working mode */
-  word_t *curr_word;    /* word being compiled now */
-  word_t *last_word;    /* set if last token was processed as word */
-  tokens_t tokens;      /* program listing */
+  bool interactive;
+  bool ready;            /* false when interpreter is being initialized */
+  tpmi_mode_t *mode;     /* current working mode */
+  word_t *curr_word;     /* word being compiled now */
+  word_t *last_word;     /* set if last token was processed as word */
+  cell_list_t curr_drct; /* gathers tokens of directive application */
+  unsigned args_drct;    /* number of arguments for directive to be read */
+  tokens_t tokens;       /* program listing */
 } tpmi_t;
 
 typedef tpmi_status_t (*tpmi_fn_t)(tpmi_t *);

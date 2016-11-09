@@ -75,6 +75,20 @@ void clist_copy(cell_list_t *ncl, cell_list_t *ocl) {
     TAILQ_INSERT_TAIL(ncl, cell_copy(c), list);
 }
 
+cell_t *clist_get_nth(cell_list_t *clist, unsigned n) {
+  if (TAILQ_EMPTY(clist))
+    return NULL;
+
+  cell_t *c;
+  TAILQ_FOREACH_REVERSE(c, clist, cell_list, list) {
+    if (n == 0)
+      return c;
+    n--;
+  }
+
+  return NULL;
+}
+
 void clist_reset(cell_list_t *clist) {
   cell_t *c, *next;
   TAILQ_FOREACH_SAFE(c, clist, list, next)

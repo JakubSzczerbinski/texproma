@@ -92,33 +92,6 @@ static tpmi_status_t do_emit(tpmi_t *interp) {
   return do_drop(interp);
 }
 
-tpmi_status_t do_print_stack(tpmi_t *interp) {
-  unsigned n = clist_length(&interp->stack);
-  cell_t *c;
-  TAILQ_FOREACH(c, &interp->stack, list) {
-    printf("[%u] ", --n);
-    cell_print(c);
-    putchar('\n');
-  }
-  return TPMI_OK;
-}
-
-static void print_words(tpmi_t *interp, word_type_t type) {
-  entry_t *entry = NULL;
-
-  while (dict_iter(interp->words, &entry))
-    if (entry->word->type == type)
-      word_print(entry->key, entry->word);
-}
-
-static tpmi_status_t do_print_dict(tpmi_t *interp) {
-  print_words(interp, WT_DEF);
-  print_words(interp, WT_VAR);
-  print_words(interp, WT_BUILTIN);
-  print_words(interp, WT_CFUNC);
-  return TPMI_OK;
-}
-
 static entry_t *find_var(tpmi_t *interp, char *key) {
   entry_t *entry = dict_find(interp->words, key);
   if (entry != NULL)
@@ -159,6 +132,53 @@ static tpmi_status_t do_store(tpmi_t *interp) {
   }
   return TPMI_OK;
 }
+#define FN(name, func, params) \
+  { (name), &(func), (params), false }
+
+#define FN_IMM(name, func, params) \
+  { (name), &(func), (params), true }
+
+#define FN_END \
+  { NULL, NULL, NULL, false }
+
+static fn_ctor_t builtins[] = {
+  FN("depth", do_depth, ""),
+  FN("drop", do_drop, "?"),
+  FN("roll", do_roll, "i"),
+  FN("pick", do_pick, "i"),
+  FN("emit", do_emit, "i"),
+  FN("!", do_store, "?a"),
+  FN("@", do_load, "a"),
+  FN("print", do_print, "?"),
+  FN_END
+};
+
+tpmi_status_t do_print_stack(tpmi_t *interp) {
+  unsigned n = clist_length(&interp->stack);
+  cell_t *c;
+  TAILQ_FOREACH(c, &interp->stack, list) {
+    printf("[%u] ", --n);
+    cell_print(c);
+    putchar('\n');
+  }
+  return TPMI_OK;
+}
+
+static void print_words(tpmi_t *interp, word_type_t type) {
+  entry_t *entry = NULL;
+
+  while (dict_iter(interp->words, &entry))
+    if (entry->word->type == type)
+      word_print(entry->key, entry->word);
+}
+
+static tpmi_status_t do_print_dict(tpmi_t *interp) {
+  print_words(interp, WT_DEF);
+  print_words(interp, WT_VAR);
+  print_words(interp, WT_BUILTIN);
+  print_words(interp, WT_CFUNC);
+  return TPMI_OK;
+}
 
 static tpmi_status_t do_reset_prog(tpmi_t *interp) {
   char **token_p;
@@ -191,26 +211,14 @@ static tpmi_status_t do_list_prog(tpmi_t *interp) {
   return TPMI_OK;
 }
 
-static tpmi_status_t do_load_prog(tpmi_t *interp) {
-  char *filename = stack_top(&interp->stack)->data;
-  FILE *file = fopen(filename, "r");
+static tpmi_status_t do_load_prog(tpmi_t *interp, const char *path) {
+  (void)interp; (void)path;
+  return TPMI_OK;
+}
 
-  if (file == NULL) {
-    ERROR(interp, "could not open '%s' file", filename);
-    return TPMI_ERROR;
-  }
-
-  cell_delete(stack_pop(&interp->stack));
-
-  fseek(file, 0, SEEK_END);
-  long size = ftell(file);
-  rewind(file);
-
-  char *prog = calloc(1, size + 1);
-  fread(prog, size, 1, file);
-  fclose(file);
-
-  return tpmi_compile(interp, prog);
+static tpmi_status_t do_save_prog(tpmi_t *interp, const char *path) {
+  (void)interp; (void)path;
+  return TPMI_OK;
 }
 
 static tpmi_status_t do_undo_prog(tpmi_t *interp) {
@@ -233,37 +241,21 @@ static tpmi_status_t do_undo_prog(tpmi_t *interp) {
   return TPMI_RESET;
 }
 
-#define FN(name, func, params) \
-  { (name), &(func), (params), false }
-
-#define FN_IMM(name, func, params) \
-  { (name), &(func), (params), true }
-
-#define FN_END \
-  { NULL, NULL, NULL, false }
-
-static fn_ctor_t builtins[] = {
-  FN("depth", do_depth, ""),
-  FN("drop", do_drop, "?"),
-  FN("roll", do_roll, "i"),
-  FN("pick", do_pick, "i"),
-  FN("load", do_load_prog, "s"),
-  FN("emit", do_emit, "i"),
-  FN("!", do_store, "?a"),
-  FN("@", do_load, "a"),
-  FN(".p", do_print, "?"),
-  FN_IMM(".reset", do_reset_prog, ""),
-  FN_IMM(".list", do_list_prog, ""),
-  FN_IMM(".undo", do_undo_prog, ""),
-  FN_IMM(".s", do_print_stack, ""),
-  FN_IMM("?", do_print_dict, ""),
+static fn_ctor_t directives[] = {
+  FN(".reset", do_reset_prog, ""),
+  FN(".list", do_list_prog, ""),
+  FN(".load", do_load_prog, "s"),
+  FN(".save", do_save_prog, "s"),
+  FN(".undo", do_undo_prog, ""),
+  FN(".stack", do_print_stack, ""),
+  FN(".help", do_print_dict, ""),
   FN_END
 };
 
 static char *initprog[] = {
   ": [ 0 state ! ; immediate",
   ": ] 1 state ! ;",
-  ": _ .p drop ;",
+  ": _ print drop ;",
   ": dup 0 pick ;",
   ": over 1 pick ;",
   ": swap 1 roll ;",
@@ -330,9 +322,18 @@ void tpmi_init(tpmi_t *interp) {
     word_t *word = calloc(1, sizeof(word_t));
     word->type = WT_BUILTIN;
     word->value = CT_FN->new();
-    word->value->fn = new_fn(builtin);
+    word->value->fn = new_fn(builtin, true);
     word->immediate = builtin->immediate;
     dict_add(interp->words, builtin->id)->word = word;
+  }
+
+  /* Initialize compiler directives */
+  for (fn_ctor_t *drct = directives; drct->id; drct++) {
+    word_t *word = calloc(1, sizeof(word_t));
+    word->type = WT_DRCT;
+    word->value = CT_FN->new();
+    word->value->fn = new_fn(drct, true);
+    dict_add(interp->words, drct->id)->word = word;
   }
 
   /* Initialize C function calls */
@@ -340,7 +341,7 @@ void tpmi_init(tpmi_t *interp) {
     word_t *word = calloc(1, sizeof(word_t));
     word->type = WT_CFUNC;
     word->value = CT_FN->new();
-    word->value->fn = new_fn(cfunc);
+    word->value->fn = new_fn(cfunc, false);
     word->immediate = cfunc->immediate;
     dict_add(interp->words, cfunc->id)->word = word;
   }

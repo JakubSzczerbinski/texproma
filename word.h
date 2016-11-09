@@ -6,7 +6,7 @@
 #include "cell.h"
 #include "fn.h"
 
-typedef enum { WT_VAR, WT_DEF, WT_BUILTIN, WT_CFUNC } word_type_t;
+typedef enum { WT_VAR, WT_DEF, WT_BUILTIN, WT_CFUNC, WT_DRCT } word_type_t;
 
 typedef struct word {
   word_type_t type;
