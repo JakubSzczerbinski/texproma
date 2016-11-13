@@ -213,11 +213,26 @@ static tpmi_status_t do_list_prog(tpmi_t *interp) {
 
 static tpmi_status_t do_load_prog(tpmi_t *interp, const char *path) {
   (void)interp; (void)path;
-  return TPMI_OK;
+  return do_reset_prog(interp);
 }
 
 static tpmi_status_t do_save_prog(tpmi_t *interp, const char *path) {
-  (void)interp; (void)path;
+  FILE *file = fopen(path, "w");
+
+  if (file) {
+    char **token_p;
+
+    ARRAY_FOREACH(token_p, &interp->tokens) {
+      if (*token_p == NULL) {
+        fputc('\n', file);
+      } else {
+        fprintf(file, "%s ", *token_p);
+      }
+    }
+
+    fclose(file);
+  }
+
   return TPMI_OK;
 }
 
