@@ -29,8 +29,13 @@ typedef ARRAY(char *) tokens_t;
 
 /* TEXture PROcessing MAchine interpeter */
 
-typedef enum { TPMI_ERROR, TPMI_OK, TPMI_NEED_MORE, TPMI_RESET } tpmi_status_t;
-typedef enum { TPMI_EVAL, TPMI_COMPILE, TPMI_DEFVAR, TPMI_FUNCREF } tpmi_mode_t;
+typedef enum {
+  TPMI_ERROR, TPMI_OK, TPMI_END, TPMI_NEED_MORE, TPMI_RESET 
+} tpmi_status_t;
+
+typedef enum {
+  TPMI_EVAL, TPMI_COMPILE, TPMI_DEFVAR, TPMI_FUNCREF
+} tpmi_mode_t;
 
 #define ERRMSG_LENGTH 128
 

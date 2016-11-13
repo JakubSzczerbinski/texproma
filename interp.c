@@ -460,54 +460,67 @@ static tpmi_status_t tpmi_compile_token(tpmi_t *interp, const char *token) {
   return status;
 }
 
-tpmi_status_t tpmi_compile(tpmi_t *interp, const char *prog) {
-  tpmi_status_t status = TPMI_OK;
-  unsigned n = 0;
+static tpmi_status_t tpmi_get_token(tpmi_t *interp, const char **token_p,
+                                    unsigned *toklen_p)
+{
+  const char *token = *token_p;
 
-  while (true) {
-    /* skip spaces */
-    prog += strspn(prog, " \t\n");
+  /* move to the next token */
+  token += strspn(token, " \t\n");
 
-    /* find token */
-    unsigned toklen;
+  /* find token length */
+  unsigned toklen;
 
-    if (*prog == '"') {
-      char *closing = strchr(prog + 1, '"');
+  if (*token == '"') {
+    char *closing = strchr(token + 1, '"');
 
-      if (closing == NULL) {
-        ERROR(interp, "missing closing quote character");
-        status = TPMI_ERROR;
-        goto error;
-      }
-
-      toklen = closing + 1 - prog;
-    } else {
-      toklen = strcspn(prog, " \t\n");
+    if (closing == NULL) {
+      ERROR(interp, "missing closing quote character");
+      return TPMI_ERROR;
     }
 
-    if (toklen == 0)
+    toklen = closing + 1 - token;
+  } else {
+    toklen = strcspn(token, " \t\n");
+  }
+
+  *token_p = token;
+  *toklen_p = toklen;
+
+  return toklen ? TPMI_OK : TPMI_END;
+}
+
+tpmi_status_t tpmi_compile(tpmi_t *interp, const char *tokptr) {
+  tpmi_status_t status = TPMI_OK;
+  unsigned n = 0;
+  unsigned toklen;
+
+  while (true) {
+    status = tpmi_get_token(interp, &tokptr, &toklen);
+
+    if (status == TPMI_ERROR)
+      goto error;
+
+    if (status == TPMI_END)
       break;
 
-    char *token;
-    
-    token = strndup(prog, toklen);
+    char *token = strndup(tokptr, toklen);
     status = tpmi_compile_token(interp, token);
     free(token);
 
-    prog += toklen;
+    tokptr += toklen;
 
-error:
+    if (status == TPMI_ERROR)
+      goto error;
 
-    if (status == TPMI_ERROR) {
-      fprintf(stderr, RED "failure at token %u\n" RESET, n + 1);
-      fprintf(stderr, RED "error: " RESET "%s\n", interp->errmsg);
-      break;
-    }
-
-    if (status == TPMI_RESET) {
+    if (status == TPMI_RESET)
       tpmi_reset(interp);
-    }
   }
 
   return status;
+
+error:
+  fprintf(stderr, RED "failure at token %u\n" RESET, n + 1);
+  fprintf(stderr, RED "error: " RESET "%s\n", interp->errmsg);
+  return TPMI_ERROR;
 }
