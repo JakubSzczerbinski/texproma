@@ -290,7 +290,8 @@ tpmi_t *tpmi_new() {
   tpmi_t *interp = calloc(1, sizeof(tpmi_t));
   TAILQ_INIT(&interp->stack);
   TAILQ_INIT(&interp->curr_drct);
-  ARRAY_INIT(&interp->tokens);
+  ARRAY_INIT(&interp->program);
+  ARRAY_INIT(&interp->listing);
   interp->words = dict_new();
 
   tpmi_init(interp);
@@ -449,78 +450,55 @@ static tpmi_status_t tpmi_compile_token(tpmi_t *interp, const char *token) {
     bool directive = word && (word->type == WT_DRCT);
 
     if (!immediate && !directive)
-      ARRAY_APPEND(&interp->tokens, strdup(token));
+      ARRAY_APPEND(&interp->listing, strdup(token));
 
     /* Save marker for undo operation. */
     if (cfunc)
-      ARRAY_APPEND(&interp->tokens, NULL);
+      ARRAY_APPEND(&interp->listing, NULL);
   }
 
   cell_dispose(&c);
   return status;
 }
 
-static tpmi_status_t tpmi_get_token(tpmi_t *interp, const char **token_p,
-                                    unsigned *toklen_p)
-{
-  const char *token = *token_p;
+tpmi_status_t tpmi_compile(tpmi_t *interp, const char *program) {
+  tokens_trim(&interp->program, 0);
 
-  /* move to the next token */
-  token += strspn(token, " \t\n");
+  if (!tokens_feed(&interp->program, program))
+    return TPMI_ERROR;
 
-  /* find token length */
-  unsigned toklen;
+  tpmi_status_t status;
 
-  if (*token == '"') {
-    char *closing = strchr(token + 1, '"');
+  do {
+    unsigned n = 0;
+    char **token_p;
 
-    if (closing == NULL) {
-      ERROR(interp, "missing closing quote character");
-      return TPMI_ERROR;
+    status = TPMI_OK;
+
+    ARRAY_FOREACH(token_p, &interp->program) {
+      if (*token_p == NULL)
+        continue;
+
+      status = tpmi_compile_token(interp, *token_p);
+
+      if (status == TPMI_ERROR) {
+        fprintf(stderr, RED "failure at token %u\n" RESET, n + 1);
+        fprintf(stderr, RED "error: " RESET "%s\n", interp->errmsg);
+        break;
+      }
+
+      n++;
+
+      if (status == TPMI_RESET) {
+        tpmi_reset(interp);
+
+        /* Re-execute listing if non-empty */
+        tokens_swap(&interp->program, &interp->listing);
+        tokens_trim(&interp->listing, 0);
+        break;
+      }
     }
-
-    toklen = closing + 1 - token;
-  } else {
-    toklen = strcspn(token, " \t\n");
-  }
-
-  *token_p = token;
-  *toklen_p = toklen;
-
-  return toklen ? TPMI_OK : TPMI_END;
-}
-
-tpmi_status_t tpmi_compile(tpmi_t *interp, const char *tokptr) {
-  tpmi_status_t status = TPMI_OK;
-  unsigned n = 0;
-  unsigned toklen;
-
-  while (true) {
-    status = tpmi_get_token(interp, &tokptr, &toklen);
-
-    if (status == TPMI_ERROR)
-      goto error;
-
-    if (status == TPMI_END)
-      break;
-
-    char *token = strndup(tokptr, toklen);
-    status = tpmi_compile_token(interp, token);
-    free(token);
-
-    tokptr += toklen;
-
-    if (status == TPMI_ERROR)
-      goto error;
-
-    if (status == TPMI_RESET)
-      tpmi_reset(interp);
-  }
+  } while (status == TPMI_RESET);
 
   return status;
-
-error:
-  fprintf(stderr, RED "failure at token %u\n" RESET, n + 1);
-  fprintf(stderr, RED "error: " RESET "%s\n", interp->errmsg);
-  return TPMI_ERROR;
 }

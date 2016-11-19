@@ -4,7 +4,7 @@
 #include "libtexproma.h"
 #include "word.h"
 #include "interp.h"
-#include "array.h"
+#include "tokens.h"
 
 static tpmi_status_t do_print(tpmi_t *interp) {
   cell_t *c = stack_top(&interp->stack);
@@ -181,12 +181,7 @@ static tpmi_status_t do_print_dict(tpmi_t *interp) {
 }
 
 static tpmi_status_t do_reset_prog(tpmi_t *interp) {
-  char **token_p;
-  ARRAY_FOREACH(token_p, &interp->tokens) {
-    free(*token_p);
-  }
-  ARRAY_RESIZE(&interp->tokens, 0);
-
+  tokens_trim(&interp->listing, 0);
   return TPMI_RESET;
 }
 
@@ -195,7 +190,7 @@ static tpmi_status_t do_list_prog(tpmi_t *interp) {
   bool newline = true;
   char **token_p;
 
-  ARRAY_FOREACH(token_p, &interp->tokens) {
+  ARRAY_FOREACH(token_p, &interp->listing) {
     if (newline) {
       fprintf(stderr, "%3u:", ++n);
       newline = false;
@@ -212,8 +207,25 @@ static tpmi_status_t do_list_prog(tpmi_t *interp) {
 }
 
 static tpmi_status_t do_load_prog(tpmi_t *interp, const char *path) {
-  (void)interp; (void)path;
-  return do_reset_prog(interp);
+  FILE *file = fopen(path, "r");
+
+  if (!file) {
+    ERROR(interp, "cannot load file: '%s'", path);
+    return TPMI_ERROR;
+  }
+
+  (void)fseek(file, 0, SEEK_END);
+  unsigned size = ftell(file);
+  rewind(file);
+
+  char *program = malloc(size + 1);
+  fread(program, size, 1, file);
+  program[size] = '\0';
+
+  (void)tokens_feed(&interp->listing, program);
+  free(program);
+
+  return TPMI_RESET;
 }
 
 static tpmi_status_t do_save_prog(tpmi_t *interp, const char *path) {
@@ -222,7 +234,7 @@ static tpmi_status_t do_save_prog(tpmi_t *interp, const char *path) {
   if (file) {
     char **token_p;
 
-    ARRAY_FOREACH(token_p, &interp->tokens) {
+    ARRAY_FOREACH(token_p, &interp->listing) {
       if (*token_p == NULL) {
         fputc('\n', file);
       } else {
@@ -237,20 +249,20 @@ static tpmi_status_t do_save_prog(tpmi_t *interp, const char *path) {
 }
 
 static tpmi_status_t do_undo_prog(tpmi_t *interp) {
-  int n = interp->tokens.size - 1;
+  int n = interp->listing.size - 1;
 
   if (n >= 0) {
-    if (*ARRAY_AT(&interp->tokens, n) == NULL)
+    if (*ARRAY_AT(&interp->listing, n) == NULL)
       n--;
 
     do {
-      char **token_p = ARRAY_AT(&interp->tokens, n);
+      char **token_p = ARRAY_AT(&interp->listing, n);
       if (*token_p == NULL)
         break;
       free(*token_p);
     } while (--n >= 0);
 
-    ARRAY_RESIZE(&interp->tokens, n + 1);
+    ARRAY_RESIZE(&interp->listing, n + 1);
   }
 
   return TPMI_RESET;
@@ -369,14 +381,9 @@ void tpmi_init(tpmi_t *interp) {
   interp->mode = (tpmi_mode_t *)&state->value->i;
 
   /* Compile initial program */
-  for (char **line = initprog; *line; line++)
-    tpmi_compile(interp, *line);
-
-  /* Re-execute user's program if non-empty */
-  char **token_p;
-  ARRAY_FOREACH(token_p, &interp->tokens) {
-    if (*token_p)
-      tpmi_compile(interp, *token_p);
+  for (char **line = initprog; *line; line++) {
+    if (tpmi_compile(interp, *line) != TPMI_OK)
+      abort();
   }
 
   interp->ready = true;
