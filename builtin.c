@@ -219,8 +219,8 @@ static tpmi_status_t do_load_prog(tpmi_t *interp, const char *path) {
   rewind(file);
 
   char *program = malloc(size + 1);
-  if (fread(program, 1, size, file) != size)
-    program[0] = '\0';
+  int unused __attribute__((unused));
+  unused = fread(program, 1, size, file);
   program[size] = '\0';
 
   (void)tokens_feed(&interp->listing, program);

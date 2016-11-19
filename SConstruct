@@ -83,6 +83,8 @@ if not env['HAVE_STRNDUP']:
     sources += ['extra/strndup.c']
 if not env['HAVE_RANDOM']:
     sources += ['extra/random.c']
+if not env['HAVE_STRLCPY']:
+    sources += ['extra/strlcpy.c']
 
 prog = env.Program(target='texproma', source=sources)
 Clean(prog, ['texproma.dSYM', Glob('*~')])

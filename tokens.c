@@ -2,14 +2,17 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "config.h"
 #include "tokens.h"
+
+const char spaces[] = " \t\r\n";
 
 bool tokens_feed(tokens_t *tokens, const char *program) {
   const char *token = program;
 
   while (true) {
     /* move to the next token */
-    token += strspn(token, " \t\n");
+    token += strspn(token, spaces);
 
     /* find token length */
     unsigned toklen;
@@ -25,7 +28,7 @@ bool tokens_feed(tokens_t *tokens, const char *program) {
 
       toklen = closing + 1 - token;
     } else {
-      toklen = strcspn(token, " \t\n");
+      toklen = strcspn(token, spaces);
     }
 
     if (toklen == 0)

@@ -14,11 +14,11 @@
 
 static bool need_more = false;
 static tpmi_t *interp = NULL;
-static sigjmp_buf ctrlc_buf;
+static jmp_buf ctrlc_buf;
 
 static void sigint(int signo) {
   if (signo == SIGINT)
-    siglongjmp(ctrlc_buf, 1);
+    longjmp(ctrlc_buf, 1);
 }
 
 static void line_append(char **dst, char *src) {
@@ -67,10 +67,12 @@ int main(int argc, char *argv[]) {
   /* Set up our own handler for CTRL + C */
   signal(SIGINT, sigint);
 
-  rl_catch_signals = 0;
   rl_readline_name = "texproma";
   rl_attempted_completion_function = texproma_completion;
+#ifndef __MINGW32__
+  rl_catch_signals = 0;
   rl_initialize();
+#endif
 
   puts(MAGENTA BOLD "TEX" WHITE "ture " MAGENTA "PRO" WHITE "cessing "
        MAGENTA "MA" WHITE "chine" RESET);
@@ -80,7 +82,7 @@ int main(int argc, char *argv[]) {
   char *histline = NULL;
   char *line;
 
-  bool quit = sigsetjmp(ctrlc_buf, 1);
+  bool quit = setjmp(ctrlc_buf);
 
   while (!quit && (line = readline(need_more ? "_ " : "> "))) {
     tpmi_status_t status = tpmi_compile(interp, line);

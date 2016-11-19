@@ -35,6 +35,7 @@ typedef enum {
 
 #define ERRMSG_LENGTH 128
 
+#undef ERROR
 #define ERROR(interp, format, ...)                                      \
   snprintf((interp)->errmsg, ERRMSG_LENGTH, format, ##__VA_ARGS__)
 

@@ -73,7 +73,7 @@ void dict_reset(dict_t *dict) {
     free(entry->key);
     if (entry->word)
       word_delete(entry->word);
-    bzero(entry, sizeof(entry_t));
+    memset(entry, 0, sizeof(entry_t));
   }
 }
 

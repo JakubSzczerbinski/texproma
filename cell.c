@@ -1,13 +1,12 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "config.h"
 #include "cell.h"
 #include "libtexproma.h"
-
-#define offsetof(st, m) __builtin_offsetof(st, m)
 
 #define CT_DEF(type, name, new, copy, stringify, delete)        \
   const cell_type_t type[1] = {{                                \

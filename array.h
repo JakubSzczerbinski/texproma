@@ -23,9 +23,12 @@ void _array_maybe_resize(_array_t *array, unsigned new_size);
 
 #define ARRAY_APPEND(array, elem)                                              \
   do {                                                                         \
-    if ((array)->size == (array)->capacity)                                    \
+    if ((array)->size < (array)->capacity) {                                   \
+      (array)->data[(array)->size++] = (elem);                                 \
+    } else {                                                                   \
       _array_maybe_resize((_array_t *)(array), (array)->size + 1);             \
-    (array)->data[(array)->size++] = (elem);                                   \
+      (array)->data[(array)->size - 1] = (elem);                               \
+    }                                                                          \
   } while (0)
 
 #define ARRAY_RESIZE(array, count)                                             \
