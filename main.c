@@ -7,6 +7,10 @@
 #include <setjmp.h>
 #include <editline/readline.h>
 
+#ifdef __MINGW32__
+#include <windows.h>
+#endif
+
 #include "ansi.h"
 #include "config.h"
 #include "interp.h"
@@ -72,6 +76,8 @@ int main(int argc, char *argv[]) {
 #ifndef __MINGW32__
   rl_catch_signals = 0;
   rl_initialize();
+#else
+  SetConsoleOutputCP(65001);
 #endif
 
   puts(MAGENTA BOLD "TEX" WHITE "ture " MAGENTA "PRO" WHITE "cessing "
