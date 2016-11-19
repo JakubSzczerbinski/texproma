@@ -22,6 +22,14 @@ static unsigned determine_capacity(unsigned size) {
 }
 
 void _array_maybe_resize(_array_t *array, unsigned new_size) {
+  /* does user want to release memory occupied by the array? */
+  if (new_size == 0) {
+    free(array->data);
+    array->data = NULL;
+    return;
+  }
+
+  /* calculate new capacity and resize array if needed */
   unsigned new_capacity = determine_capacity(new_size);
   if (new_capacity != array->capacity) {
     array->data = realloc(array->data, new_capacity * array->elemsize);

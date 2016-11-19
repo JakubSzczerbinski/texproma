@@ -19,7 +19,6 @@ void _array_maybe_resize(_array_t *array, unsigned new_size);
     (array)->capacity = 0;                                                     \
     (array)->elemsize = sizeof(*(array)->data);                                \
     (array)->data = NULL;                                                      \
-    _array_maybe_resize((_array_t *)(array), 0);                               \
   } while (0)
 
 #define ARRAY_APPEND(array, elem)                                              \

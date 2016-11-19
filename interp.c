@@ -311,6 +311,8 @@ void tpmi_reset(tpmi_t *interp) {
 }
 
 void tpmi_delete(tpmi_t *interp) {
+  ARRAY_RESIZE(&interp->program, 0);
+  ARRAY_RESIZE(&interp->listing, 0);
   clist_reset(&interp->curr_drct);
   clist_reset(&interp->stack);
   dict_delete(interp->words);
