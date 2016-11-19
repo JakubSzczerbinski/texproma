@@ -25,6 +25,9 @@ void _array_maybe_resize(_array_t *array, unsigned new_size) {
   /* does user want to release memory occupied by the array? */
   if (new_size == 0) {
     free(array->data);
+
+    array->size = 0;
+    array->capacity = 0;
     array->data = NULL;
     return;
   }
