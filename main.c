@@ -103,6 +103,7 @@ static void* shell_run(void *data) {
   }
 
   pthread_cleanup_pop(true);
+  gui_quit();
 
   return NULL;
 }

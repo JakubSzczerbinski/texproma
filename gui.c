@@ -178,17 +178,21 @@ void gui_loop(tpmi_t *interp) {
 
   while (true) {
     SDL_Event event;
+    SDL_WaitEvent (&event);
 
-    if (SDL_PollEvent (&event)) {
-      if (event.type == SDL_QUIT)
-        break;
-      if (event.type == SDL_USEREVENT)
-        gui_redraw(interp);
-    }
+    if (event.type == SDL_QUIT)
+      break;
+    if (event.type == SDL_USEREVENT)
+      gui_redraw(interp);
   }
 }
 
 void gui_update() {
   SDL_Event event = {.type = SDL_USEREVENT};
+  SDL_PushEvent(&event);
+}
+
+void gui_quit() {
+  SDL_Event event = {.type = SDL_QUIT};
   SDL_PushEvent(&event);
 }

@@ -6,5 +6,6 @@
 void gui_init();
 void gui_loop(tpmi_t *interp);
 void gui_update();
+void gui_quit();
 
 #endif
