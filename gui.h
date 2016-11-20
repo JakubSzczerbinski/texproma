@@ -4,7 +4,7 @@
 #include "interp.h"
 
 void gui_init();
-void gui_end();
-void gui_update(tpmi_t *interp);
+void gui_loop(tpmi_t *interp);
+void gui_update();
 
 #endif

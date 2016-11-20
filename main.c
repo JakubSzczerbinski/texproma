@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <signal.h>
+#include <pthread.h>
 #include <editline/readline.h>
 
 #ifdef __MINGW32__
@@ -17,10 +17,7 @@
 
 static bool need_more = false;
 static tpmi_t *interp = NULL;
-
-static void sigint() {
-  exit(EXIT_FAILURE);
-}
+static pthread_t shell;
 
 static void line_append(char **dst, char *src) {
   if (*dst == NULL) {
@@ -57,22 +54,16 @@ static char **texproma_completion(const char *text, int start, int end) {
   return rl_completion_matches(text, complete);
 }
 
-static void quit() {
-  puts("quit");
+static void shell_quit(void *data) {
+  tpmi_t *interp = data;
   tpmi_delete(interp);
+  puts("quit");
 }
 
-int main(int argc, char *argv[]) {
-  (void)argc, (void)argv;
+static void* shell_run(void *data) {
+  tpmi_t *interp = data;
 
-  interp = tpmi_new(); 
-
-  gui_init();
-  gui_update(interp);
-
-  /* Set up our own handler for CTRL + C */
-  atexit(quit);
-  signal(SIGINT, sigint);
+  pthread_cleanup_push(shell_quit, interp);
 
   rl_readline_name = "texproma";
   rl_attempted_completion_function = texproma_completion;
@@ -106,10 +97,25 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    gui_update(interp);
+    gui_update();
 
     free(line);
   }
+
+  pthread_cleanup_pop(true);
+
+  return NULL;
+}
+
+int main(int argc, char *argv[]) {
+  (void)argc, (void)argv;
+
+  interp = tpmi_new(); 
+  gui_init();
+
+  pthread_create(&shell, NULL, shell_run, interp);
+  gui_loop(interp);
+  pthread_cancel(shell);
 
   exit(EXIT_SUCCESS);
 }

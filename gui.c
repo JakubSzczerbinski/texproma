@@ -35,6 +35,8 @@ static void RenderText(SDL_Renderer *renderer, TTF_Font *font,
   SDL_FreeSurface(surf);
 }
 
+static void gui_end();
+
 void gui_init() {
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
@@ -76,7 +78,7 @@ void gui_init() {
   atexit(gui_end);
 }
 
-void gui_end() {
+static void gui_end() {
   TTF_CloseFont(font16);
 
   SDL_DestroyTexture(texture);
@@ -84,7 +86,7 @@ void gui_end() {
   SDL_DestroyWindow(window);
 }
 
-void gui_update(tpmi_t *interp) {
+static void gui_redraw(tpmi_t *interp) {
   char str[40];
   cell_t *c;
 
@@ -169,4 +171,24 @@ void gui_update(tpmi_t *interp) {
   RenderText(renderer, font16, "STACK LISTING", &dst, true);
 
   SDL_RenderPresent(renderer);
+}
+
+void gui_loop(tpmi_t *interp) {
+  gui_redraw(interp);
+
+  while (true) {
+    SDL_Event event;
+
+    if (SDL_PollEvent (&event)) {
+      if (event.type == SDL_QUIT)
+        break;
+      if (event.type == SDL_USEREVENT)
+        gui_redraw(interp);
+    }
+  }
+}
+
+void gui_update() {
+  SDL_Event event = {.type = SDL_USEREVENT};
+  SDL_PushEvent(&event);
 }
