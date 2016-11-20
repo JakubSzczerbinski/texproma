@@ -315,7 +315,7 @@ static fn_ctor_t cfuncs[] = {
   FN("mul", tpm_mul, ">@m@m@m"),
   FN("mix", tpm_mix, ">@m@m@mi"),
   FN("max", tpm_max, ">@m@m@m"),
-  FN("shade", tpm_shade, ">mmm"),
+  FN("shade", tpm_shade, ">@mm@m"),
   FN("mix-map", tpm_mix_map, ">mmmm"),
   FN("repeat", tpm_repeat, ">@m@mii"),
   FN("flip", tpm_flip, ">@m@m"),
