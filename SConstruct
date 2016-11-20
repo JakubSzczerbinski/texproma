@@ -41,6 +41,7 @@ env['HAVE_STRLCPY'] = conf.CheckFunc('strlcpy')
 env['HAVE_RANDOM'] = conf.CheckFunc('random')
 
 dependencies = [('m', 'math.h', None),
+                ('pthread', 'pthread.h', None),
                 ('SDL2', 'SDL.h', 'sdl2'),
                 ('SDL2_ttf', 'SDL_ttf.h', 'SDL2_ttf'),
                 ('ffi', 'ffi.h', 'libffi'),
