@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include <signal.h>
-#include <setjmp.h>
 #include <editline/readline.h>
 
 #ifdef __MINGW32__
@@ -18,11 +17,9 @@
 
 static bool need_more = false;
 static tpmi_t *interp = NULL;
-static jmp_buf ctrlc_buf;
 
-static void sigint(int signo) {
-  if (signo == SIGINT)
-    longjmp(ctrlc_buf, 1);
+static void sigint() {
+  exit(EXIT_FAILURE);
 }
 
 static void line_append(char **dst, char *src) {
@@ -60,6 +57,11 @@ static char **texproma_completion(const char *text, int start, int end) {
   return rl_completion_matches(text, complete);
 }
 
+static void quit() {
+  puts("quit");
+  tpmi_delete(interp);
+}
+
 int main(int argc, char *argv[]) {
   (void)argc, (void)argv;
 
@@ -69,6 +71,7 @@ int main(int argc, char *argv[]) {
   gui_update(interp);
 
   /* Set up our own handler for CTRL + C */
+  atexit(quit);
   signal(SIGINT, sigint);
 
   rl_readline_name = "texproma";
@@ -88,9 +91,7 @@ int main(int argc, char *argv[]) {
   char *histline = NULL;
   char *line;
 
-  bool quit = setjmp(ctrlc_buf);
-
-  while (!quit && (line = readline(need_more ? "_ " : "> "))) {
+  while ((line = readline(need_more ? "_ " : "> "))) {
     tpmi_status_t status = tpmi_compile(interp, line);
 
     if (status != TPMI_ERROR) {
@@ -109,11 +110,6 @@ int main(int argc, char *argv[]) {
 
     free(line);
   }
-
-  puts("quit");
-
-  /* Clean up our memory */
-  tpmi_delete(interp);
 
   exit(EXIT_SUCCESS);
 }
