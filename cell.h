@@ -81,7 +81,7 @@ static inline void clist_remove(cell_list_t *clist, cell_t *c) {
   TAILQ_REMOVE(clist, c, list);
 }
 
-void clist_copy(cell_list_t *ncl, cell_list_t *ocl);
+void clist_copy(cell_list_t *ocl, cell_list_t *ncl);
 unsigned clist_length(cell_list_t *clist);
 cell_t *clist_get_nth(cell_list_t *clist, unsigned n);
 void clist_reset(cell_list_t *clist);

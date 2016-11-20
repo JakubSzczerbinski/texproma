@@ -221,7 +221,7 @@ static tpmi_status_t eval_word(tpmi_t *interp, entry_t *entry) {
       TAILQ_INIT(&res);
 
       for (unsigned j = 0; j < 3; j++) {
-        clist_copy(&args, &ai.args);
+        clist_copy(&ai.args, &args);
 
         cell_t *arg = clist_first(&args);
 

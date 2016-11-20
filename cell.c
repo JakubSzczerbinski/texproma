@@ -67,11 +67,13 @@ unsigned clist_length(cell_list_t *clist) {
   return n;
 }
 
-void clist_copy(cell_list_t *ncl, cell_list_t *ocl) {
+void clist_copy(cell_list_t *ocl, cell_list_t *ncl) {
   cell_t *c;
   TAILQ_INIT(ncl);
-  TAILQ_FOREACH(c, ocl, list)
-    TAILQ_INSERT_TAIL(ncl, cell_copy(c), list);
+  TAILQ_FOREACH(c, ocl, list) {
+    cell_t *nc = cell_copy(c);
+    TAILQ_INSERT_TAIL(ncl, nc, list);
+  }
 }
 
 cell_t *clist_get_nth(cell_list_t *clist, unsigned n) {
@@ -164,7 +166,7 @@ static cell_t *ct_list_new() {
 }
 
 static void ct_list_copy(cell_t *oc, cell_t *nc) {
-  clist_copy(&nc->head, &oc->head);
+  clist_copy(&oc->head, &nc->head);
 }
 
 static void ct_generic_stringify(cell_t *c, char *str, unsigned len) {
