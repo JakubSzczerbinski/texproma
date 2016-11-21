@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>TexProMa Presentation</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <style type="text/css">
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# TexProMa
+
+Texture Processing Machine
+
+---
+
+# Motivation
+
+1. Square seamless textures
+2. Color or grayscale
+4. Simple and fun to create
+3. Flexible
+5. Small code footprint (for demoscene intros)
+
+---
+
+# Possible approaches to texture generation
+
+### Some kind of noise or fractal?
+
+![perlin-noise](http://anthonypigeot.com/content/images/2014/Jan/perlin_noise.png)
+
+---
+
+# Possible approaches to texture generation
+
+### Long and complex functions `f(x,y) → color`?
+
+```glsl
+// Cellular noise ("Worley noise") in 2D in GLSL, simplified version.
+vec4 permute (vec4 x) { return mod((34.0 * x + 1.0) * x, 289.0); }
+vec2 cellular2x2 (vec2 P) {
+  const float K = 1.0/7.0;
+  const float K2 = 0.5/7.0;
+  const float jitter = 0.8; // jitter 1.0 makes F1 wrong more often
+  vec2 Pi = mod(floor(P), 289.0);
+  vec2 Pf = fract(P);
+  vec4 Pfx = Pf.x + vec4(-0.5, -1.5, -0.5 , -1.5);
+  vec4 Pfy = Pf.y + vec4(-0.5, -0.5, -1.5 , -1.5);
+  vec4 p = permute(Pi.x + vec4(0.0, 1.0, 0.0, 1.0));
+  p = permute (p + Pi.y + vec4(0.0, 0.0, 1.0, 1.0));
+  vec4 ox = mod(p , 7.0) * K + K2;
+  vec4 oy = mod(floor (p * K), 7.0) * K + K2;
+  vec4 dx = Pfx + jitter * ox;
+  vec4 dy = Pfy + jitter * oy;
+  vec4 d = dx * dx + dy * dy; // distances squared
+  // Cheat and pick only F1 for the return value
+  d.xy = min (d.xy, d.zw);
+  d.x = min (d.x, d.y);
+  return d.xx; // F1 duplicated , F2 not computed
+}
+varying vec2 st; // Texture coordinates
+void main (void) {
+  vec2 F = cellular2x2(st);
+  float n = 1.0 - 1.5 * F.x;
+  gl_FragColor = vec4(n.xxx, 1.0);
+}
+```
+
+---
+
+# Possible approaches to texture generation
+
+### Simple functions and their composition
+
+1. Generate content
+2. Compose
+2. Distort
+3. Filter
+4. Change colors
+
+---
+
+# Computation model
+
+1. Simple values aka cells (integer, float, mono buffer, color buffer)
+2. Stack machine
+3. Macro definitions
+4. Global named variables
+5. Program recording and *.undo* operation
+6. Can call C routines easily
+
+Inspired by **Forth** language!
+
+---
+
+# Implementation
+
+1. C language
+2. List, dynamic array, hash table
+3. Data driven - extremely easy to add new operator
+4. libffi - dynamic call construction
+5. libSDL - for visual feedback
+6. libedit - readline implementation with BSD license
+
+Texture generation is only 1kLOC! Another 2.5kLOC is interpreter and UI.
+
+---
+
+# Example
+
+```
+4333 perlin-noise 
+0.7 contrast 
+34563 perlin-noise 
+5 34 noise 
+0.5 0.5 distort 
+dup emboss
+swap 0.5 contrast 
+0xffff40 0x4040ff colorize 
+shade 
+```
+
+.right[![simple-1](images/simple-1.png)]
+
+    </textarea>
+    <script src="https://gnab.github.io/remark/downloads/remark-latest.min.js" type="text/javascript">
+    </script>
+    <script type="text/javascript">
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
