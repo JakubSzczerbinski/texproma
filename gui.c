@@ -67,7 +67,7 @@ void gui_init() {
   window = SDL_CreateWindow("TexProMa by Krystian Bacławski", win_x, win_y,
                             TP_WIDTH * NUM, TP_HEIGHT + FONT_H, 0);
   renderer = SDL_CreateRenderer(window, -1,
-                                SDL_RENDERER_ACCELERATED);
+                                SDL_RENDERER_SOFTWARE);
   texture = SDL_CreateTexture(renderer, 
                               SDL_PIXELFORMAT_RGBA8888,
                               SDL_TEXTUREACCESS_STREAMING,
@@ -184,6 +184,7 @@ void gui_loop(tpmi_t *interp) {
       break;
     if (event.type == SDL_USEREVENT)
       gui_redraw(interp);
+    SDL_RenderPresent(renderer);
   }
 }
 
