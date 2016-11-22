@@ -79,13 +79,13 @@ void tpm_noise(tpm_mono_buf dst, unsigned step, unsigned seed) {
       float p0 = tpm_get_pixel(dst, x, y - n);
       float p1 = tpm_get_pixel(dst, x, y);
       float p2 = tpm_get_pixel(dst, x, y + n);
-      float p3 = tpm_get_pixel(dst, x, y + n * 2);
+      float p3 = tpm_get_pixel(dst, x, y + 2 * n);
 
       /* Catmull-Rom tangents */
-      float t1 = 0.5f * (p0 + p1);
-      float t2 = 0.5f * (p1 + p3);
+      float t1 = 0.5f * (p2 - p0);
+      float t2 = 0.5f * (p3 - p1);
 
-      for (unsigned i = 0; i < n; i++)
+      for (unsigned i = 1; i < n; i++)
         tpm_put_pixel(dst, x, y + i,
                       tpm_bezier_interpolate(i * ds, p1, p2, t1, t2));
     }
@@ -101,10 +101,10 @@ void tpm_noise(tpm_mono_buf dst, unsigned step, unsigned seed) {
       float p3 = tpm_get_pixel(dst, x + 2 * n, y);
 
       /* Catmull-Rom tangents */
-      float t1 = 0.5f * (p0 + p1);
-      float t2 = 0.5f * (p1 + p3);
+      float t1 = 0.5f * (p2 - p0);
+      float t2 = 0.5f * (p3 - p1);
 
-      for (unsigned i = 0; i < n; i++)
+      for (unsigned i = 1; i < n; i++)
         tpm_put_pixel(dst, x + i, y,
                       tpm_bezier_interpolate(i * ds, p1, p2, t1, t2));
     }

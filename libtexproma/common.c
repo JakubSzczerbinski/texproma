@@ -40,15 +40,24 @@ uint32_t tpm_random(uint32_t *seed) {
   return s;
 }
 
-float tpm_bezier_interpolate(float s1, float p1, float p2, float t1, float t2) {
+float tpm_bezier_interpolate(float s, float p1, float p2, float t1, float t2) {
+  /*
+   * h1(s) = 2*s^3 - 3*s^2 + 1
+   * h2(s) = -2*s^3 + 3*s^2
+   * h3(s) = s^3 - 2*s^2 + s
+   * h4(s) = s^3 - s^2
+   *
+   * H(s) = h1(s) * p1 + h2(s) * p2 + h3(s) * t1 + h4(s) * t2
+   */
+
   float s2, s3, h1, h2, h3, h4;
 
-  s2 = s1 * s1;
-  s3 = s2 * s1;
+  s2 = s * s;
+  s3 = s2 * s;
   h2 = -2.0f * s3 + 3.0f * s2;
   h1 = -h2 + 1.0f;
   h4 = s3 - s2;
-  h3 = h4 - s2 + s1;
+  h3 = h4 - s2 + s;
 
   return h1 * p1 + h2 * p2 + h3 * t1 + h4 * t2;
 }
