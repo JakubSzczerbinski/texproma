@@ -43,4 +43,12 @@ void tpm_hsv_to_rgb(float *r, float *g, float *b, float h, float s, float v);
     (typeof(x0))(_x0 * (1.0f - s) + _x1 * s);   \
   })
 
+static inline float smoothstep(float x) {
+  return x * x * (3 - 2 * x);
+}
+
+static inline float smootherstep(float x) {
+  return x * x * x * (x * (x * 6 - 15) + 10);
+}
+
 #endif
