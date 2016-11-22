@@ -91,7 +91,7 @@ void tpm_blur_3x3(tpm_mono_buf dst, tpm_mono_buf src) {
 }
 
 void tpm_blur_5x5(tpm_mono_buf dst, tpm_mono_buf src) {
-  filter(dst, src, _blur_5x5, 5, 1.0f / 11.0f, 0.0f);
+  filter(dst, src, _blur_5x5, 5, 1.0f / 13.0f, 0.0f);
 }
 
 void tpm_gaussian_3x3(tpm_mono_buf dst, tpm_mono_buf src) {
