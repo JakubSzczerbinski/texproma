@@ -3,9 +3,10 @@ import platform
 import SCons.Builder
 import SCons.Action
 
-env = Environment(CXXFLAGS="-std=c++11")
+env = Environment()
 
-env.Append(CCFLAGS = '-g -O0')
+env.Append(CXXFLAGS = '-std=c++11')
+env.Append(CCFLAGS = '-g -O2')
 env.Append(LINKFLAGS = '-g')
 
 env.ParseConfig('pkg-config --cflags sdl2')
@@ -17,7 +18,10 @@ env.Prepend(LIBS = ['m', 'texproma'])
 env.Prepend(LIBPATH = ['../libtexproma/'])
 env.Prepend(CPPPATH = ['../libtexproma/'])
 
-sources = ['main.cpp']
+sources = [
+	'main.cpp',
+	'DebugWindow.cpp'
+]
 
-prog = env.Program(target='nodes', source=sources)
+prog = env.Program(target='nodesInterface', source=sources)
 Clean(prog, [ Glob('*~')]);
