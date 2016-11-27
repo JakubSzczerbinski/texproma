@@ -1,0 +1,23 @@
+
+import platform
+import SCons.Builder
+import SCons.Action
+
+env = Environment(CXXFLAGS="-std=c++11")
+
+env.Append(CCFLAGS = '-g -O0')
+env.Append(LINKFLAGS = '-g')
+
+env.ParseConfig('pkg-config --cflags sdl2')
+env.ParseConfig('pkg-config --libs sdl2')
+
+SConscript('../libtexproma/SConscript', exports='env')
+
+env.Prepend(LIBS = ['m', 'texproma'])
+env.Prepend(LIBPATH = ['../libtexproma/'])
+env.Prepend(CPPPATH = ['../libtexproma/'])
+
+sources = ['main.cpp']
+
+prog = env.Program(target='nodes', source=sources)
+Clean(prog, [ Glob('*~')]);

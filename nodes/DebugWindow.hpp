@@ -1,7 +1,9 @@
-#include "../libtexproma/libtexproma.h"
 #include "Logger.hpp"
 #include <SDL.h>
 #include <stdexcept>
+extern "C"{
+	#include <libtexproma.h>
+}
 
 class DebugWindow
 {
@@ -36,12 +38,46 @@ public:
 	                              SDL_TEXTUREACCESS_STREAMING,
 	                              TP_WIDTH, TP_HEIGHT);
 	}
-	void displayBuf(tpm_mono_buf buffer)
+	void displayBuf(tpm_mono_buf buffer, unsigned x, unsigned y)
 	{
-		
+		int posX = x * TP_WIDTH;
+		int posY = y * TP_HEIGHT;
+		SDL_Rect dst = {
+			posX, posY,
+			TP_WIDTH, TP_HEIGHT
+		};
+		RGBA *pixels;
+		int pitch;
+		SDL_LockTexture(texture_, NULL, (void **)&pixels, &pitch);
+		for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
+            uint8_t p = ((uint8_t *)buffer)[i];
+            pixels[i] = (RGBA){p, p, p, 255};
+        }
+        SDL_UnlockTexture(texture_);
+        SDL_RenderCopy(renderer_, texture_, NULL, &dst);
 	}
-	void displayBuf(tpm_color_buf buffer);
+	void displayBuf(tpm_color_buf buffer, unsigned x, unsigned y)
+	{
+		int posX = x * TP_WIDTH;
+		int posY = y * TP_HEIGHT;
+		SDL_Rect dst = {
+			posX, posY,
+			TP_WIDTH, TP_HEIGHT
+		};
+		RGBA *pixels;
+		int pitch;
+		SDL_LockTexture(texture_, NULL, (void **)&pixels, &pitch);
+		for (int i = 0; i < TP_WIDTH * TP_HEIGHT; i++) {
+            uint8_t r = ((uint8_t **)buffer)[0][i];
+            uint8_t g = ((uint8_t **)buffer)[1][i];
+            uint8_t b = ((uint8_t **)buffer)[2][i];
+            pixels[i] = (RGBA){r, g, b, 255};
+        }
+        SDL_UnlockTexture(texture_);
+        SDL_RenderCopy(renderer_, texture_, NULL, &dst);
+	}
 private:
+	typedef struct { uint8_t a, b, g, r; } RGBA;
 	Logger SDL_log{"SDL"};
 	SDL_Window* window_;
 	SDL_Renderer* renderer_;
