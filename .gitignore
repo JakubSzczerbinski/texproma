@@ -10,9 +10,8 @@
 cscope.out
 tags
 *.taghl
-
+nodesInterface
 config.h
 config.log
-
 texproma
 texproma.dSYM
