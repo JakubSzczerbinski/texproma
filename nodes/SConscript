@@ -1,0 +1,8 @@
+Import('env')
+
+sources = [
+    'DebugWindow.cpp'
+]
+
+lib = env.StaticLibrary(target='nodes', source=sources)
+Clean(lib, Glob('*~'))

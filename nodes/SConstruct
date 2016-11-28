@@ -13,15 +13,12 @@ env.ParseConfig('pkg-config --cflags sdl2')
 env.ParseConfig('pkg-config --libs sdl2')
 
 SConscript('../libtexproma/SConscript', exports = 'env')
+SConscript('SConscript', exports = 'env')
 
-env.Prepend(LIBS =['m', 'texproma']) 
-env.Prepend(LIBPATH =['../libtexproma/']) 
-env.Prepend(CPPPATH =['../libtexproma/']) 
+env.Prepend(LIBS =['m', 'texproma', 'nodes']) 
+env.Prepend(LIBPATH =[Dir('../libtexproma/').abspath, Dir('.').abspath]) 
+env.Prepend(CPPPATH =[Dir('../libtexproma/').abspath, Dir('.').abspath]) 
 
-sources = [
-	'main.cpp',
-	'DebugWindow.cpp'
-]
-
-prog = env.Program(target = 'nodesInterface', source = sources) 
-Clean(prog, [Glob('*~')]);
+SConscript('tests/SConscript', exports = 'env')
+prog = env.Program(target = 'nodesInterface', source = ['main.cpp']) 
+Clean(prog, [Glob('*~')])

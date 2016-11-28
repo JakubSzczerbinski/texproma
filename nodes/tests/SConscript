@@ -1,0 +1,9 @@
+
+Import('env')
+
+testSources = [
+    'DataTest.cpp'
+]
+
+tests = env.Program(target='nodesTests', source=testSources)
+Clean(tests, Glob('*~'))

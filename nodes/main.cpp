@@ -1,7 +1,8 @@
-#include "DebugWindow.hpp"
 extern "C" {
 #include <libtexproma.h>
 }
+#include "DebugWindow.hpp"
+
 int main() {
   DebugWindow window(5, 3);
   while (true) {

@@ -1,14 +1,17 @@
+#include <typeinfo>
 
 class DataT {
  public:
   template <typename dataType>
-  bool hasType() {
-    if (typeId() == type_info.id(dataType))
-      return 1;
+  bool isType() const {
+    if (typeId() == typeid(dataType))
+      return true;
+    else
+      return false;
   }
-  virtual unsigned typeId() const = 0;
+  virtual const std::type_info& typeId() const = 0;
   virtual DataT* copy() const = 0;
-  virtual ~DataT() = 0;
+  virtual ~DataT(){};
 };
 
 template <typename dataType>
@@ -16,8 +19,14 @@ class Data : public DataT {
  public:
   Data(const dataType& data) : data_(data) {}
   dataType& getRawData() { return data_; }
-  unsigned typeId() const override;
+  const std::type_info& typeId() const override { return typeid(dataType); }
+  DataT* copy() const override { return new Data<dataType>(data_); }
+  ~Data() override{};
 
  private:
   dataType data_;
 };
+
+bool isSameType(const DataT& a, const DataT& b) {
+  return a.typeId() == b.typeId();
+}
