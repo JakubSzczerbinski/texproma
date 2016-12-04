@@ -1,7 +1,8 @@
 Import('env')
 
 sources = [
-    'DebugWindow.cpp'
+    'DebugWindow.cpp',
+    'Data.cpp'
 ]
 
 lib = env.StaticLibrary(target='nodes', source=sources)

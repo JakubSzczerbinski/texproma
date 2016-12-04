@@ -15,7 +15,7 @@ env.ParseConfig('pkg-config --libs sdl2')
 SConscript('../libtexproma/SConscript', exports = 'env')
 SConscript('SConscript', exports = 'env')
 
-env.Prepend(LIBS =['m', 'texproma', 'nodes']) 
+env.Prepend(LIBS =['m', 'texproma', 'nodes', 'boost_unit_test_framework']) 
 env.Prepend(LIBPATH =[Dir('../libtexproma/').abspath, Dir('.').abspath]) 
 env.Prepend(CPPPATH =[Dir('../libtexproma/').abspath, Dir('.').abspath]) 
 

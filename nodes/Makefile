@@ -1,4 +1,3 @@
-
 build:
 	scons -Q
 

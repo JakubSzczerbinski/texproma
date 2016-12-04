@@ -1,6 +1,10 @@
+#ifndef NODES_DATA_HPP
+#define NODES_DATA_HPP
+
 #include <typeindex>
 #include <stdexcept>
 #include <string>
+#include <memory>
 
 class DataT {
  public:
@@ -51,6 +55,6 @@ std::shared_ptr<DataT> makeSharedData(dataType data) {
   return std::shared_ptr<Data<dataType>>(new Data<dataType>(data));
 }
 
-bool isSameType(const DataT& a, const DataT& b) {
-  return a.typeId() == b.typeId();
-}
+bool isSameType(const DataT& a, const DataT& b);
+
+#endif

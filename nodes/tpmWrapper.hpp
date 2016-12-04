@@ -1,9 +1,13 @@
+#ifndef NODES_TPM_WRAPPER_HPP
+#define NODES_TPM_WRAPPER_HPP
+
 #include <cstring>
 #include <typeinfo>
 extern "C" {
 #include "libtexproma.h"
 }
 #include "Function.hpp"
+
 
 namespace tpmWrapper {
 
@@ -157,3 +161,5 @@ struct TpmPerlinNoise : public Function {
   }
 };
 }
+
+#endif

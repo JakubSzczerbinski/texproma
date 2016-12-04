@@ -1,5 +1,6 @@
-#define BOOST_TEST_MODULE TpmWrapperTests
-#include <boost/test/included/unit_test.hpp>
+#define BOOST_TEST_MODULE NODES_TESTS
+#define BOOST_TEST_DYN_LINK
+#include <boost/test/unit_test.hpp>
 #include <tpmWrapper.hpp>
 
 BOOST_AUTO_TEST_CASE(TpmSineCallTest) {
