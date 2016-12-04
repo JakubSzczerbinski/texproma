@@ -2,6 +2,7 @@ extern "C" {
 #include <libtexproma.h>
 }
 #include "DebugWindow.hpp"
+#include "tpmWrapper.hpp"
 
 int main() {
   DebugWindow window(5, 3);

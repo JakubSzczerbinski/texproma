@@ -1,9 +1,17 @@
 
 Import('env')
 
-testSources = [
-    'DataTest.cpp'
+
+runner = Builder(action = './$SOURCE')
+env.Append(BUILDERS = {'Run' : runner})
+
+tests = [
+    'DataTest',
+    'TpmWrapperTests'
 ]
 
-tests = env.Program(target='nodesTests', source=testSources)
-Clean(tests, Glob('*~'))
+for test in tests:
+	testBinary = env.Program(target=test, source=[test+'.cpp'])
+	testRunCmd = env.Run(test + '.dummy', test)
+	env.AlwaysBuild(testRunCmd)
+	Clean(testBinary, Glob('*~'))
