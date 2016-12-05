@@ -15,5 +15,5 @@ config.h
 config.log
 texproma
 texproma.dSYM
-DataTest
-TpmWrapperTests
+NodesTests
+test.log
