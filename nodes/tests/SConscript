@@ -7,7 +7,8 @@ env.Append(BUILDERS = {'Run' : runner})
 
 sources = [
     'DataTest.cpp',
-    'TpmWrapperTests.cpp'
+    'TpmWrapperTests.cpp',
+    'NodeTests.cpp'
 ]
 
 tests = env.Program(target = 'NodesTests', source=sources);

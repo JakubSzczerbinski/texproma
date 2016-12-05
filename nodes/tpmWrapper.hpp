@@ -8,7 +8,6 @@ extern "C" {
 }
 #include "Function.hpp"
 
-
 namespace tpmWrapper {
 
 /************
