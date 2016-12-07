@@ -2,7 +2,7 @@
 Import('env')
 
 
-runner = Builder(action = './$SOURCE 2>&1 > $TARGET')
+runner = Builder(action = './$SOURCE 2> $TARGET')
 env.Append(BUILDERS = {'Run' : runner})
 
 sources = [

@@ -34,4 +34,39 @@ BOOST_AUTO_TEST_CASE(MatchingParmetersPassingOneParamTwoParams) {
   BOOST_TEST(matcher.match(values) == true);
 }
 
-//TODO write tests for Node
+BOOST_AUTO_TEST_CASE(CallingFunctionWithNodesAndParamLinks) {
+  auto valueParamLink =
+      std::shared_ptr<ParamLink>(new DataParamLink(makeSharedData(10.0f)));
+  ParamLinkContainer v = {valueParamLink};
+  auto node = std::shared_ptr<Node>(new Node(new tpmWrapper::TpmSine(), v));
+  auto nodeLink = std::unique_ptr<ParamLink>(new FunctionParamLink(node, 0));
+  bool test1 = nodeLink->getParam() != nullptr;
+  BOOST_TEST(test1);
+}
+
+BOOST_AUTO_TEST_CASE(CallingFunctionWithNodesAndInvalidOutputParamLinks) {
+  auto valueParamLink =
+      std::shared_ptr<ParamLink>(new DataParamLink(makeSharedData(100.0f)));
+  ParamLinkContainer v = {valueParamLink};
+  auto node = std::shared_ptr<Node>(new Node(new tpmWrapper::TpmSine(), v));
+  auto nodeLink = std::unique_ptr<ParamLink>(new FunctionParamLink(node, 1));
+  bool test1 = nodeLink->getParam() == nullptr;
+  BOOST_TEST(test1);
+}
+
+BOOST_AUTO_TEST_CASE(CallingFunctionWithNodesAndInvalidInputParamLinks) {
+  auto valueParamLink =
+      std::shared_ptr<ParamLink>(new DataParamLink(makeSharedData(100.0)));
+  ParamLinkContainer v = {valueParamLink};
+  auto node = std::shared_ptr<Node>(new Node(new tpmWrapper::TpmSine(), v));
+  auto nodeLink = std::unique_ptr<ParamLink>(new FunctionParamLink(node, 0));
+  bool caughtError = 0;
+  try {
+    nodeLink->getParam();
+  } catch (std::runtime_error err) {
+    caughtError = 1;
+  }
+  BOOST_TEST(caughtError);
+}
+
+// TODO write tests for Node
