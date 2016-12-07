@@ -6,7 +6,7 @@ import SCons.Action
 env = Environment()
 
 env.Append(CXXFLAGS = '-std=c++11')
-env.Append(CCFLAGS = '-g -O2')
+env.Append(CCFLAGS = '-g -Og')
 env.Append(LINKFLAGS = '-g')
 
 env.ParseConfig('pkg-config --cflags sdl2')
