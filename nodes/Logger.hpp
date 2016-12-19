@@ -1,3 +1,6 @@
+#ifndef LOGGER_HPP
+#define LOGGER_HPP
+
 #include <initializer_list>
 #include <string>
 #include <vector>
@@ -26,3 +29,5 @@ Logger& operator<<(Logger& log, const T& message) {
   fprintf(stderr, "%s\n", logLine.c_str());
   return log;
 }
+
+#endif

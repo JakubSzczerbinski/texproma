@@ -1,0 +1,18 @@
+In file included from NodeTree.cpp:1:0:
+./NodeTree.hpp: In member function 'std::shared_ptr<DataT> NodeTree::getResult(Return)':
+./NodeTree.hpp:63:101: error: expected ';' before 'ret'
+         log << "Can't evaluate result. Missing return to match param " + std::to_string(i) + " of " ret.node->getName();
+                                                                                                     ^~~
+./NodeTree.hpp:66:32: error: no matching function for call to 'NodeTree::getResult(std::pair<const Param, Return>&)'
+       auto data = getResult(*it);
+                                ^
+./NodeTree.hpp:48:26: note: candidate: std::shared_ptr<DataT> NodeTree::getResult(std::shared_ptr<Node>, unsigned int)
+   std::shared_ptr<DataT> getResult(std::shared_ptr<Node> node, unsigned paramIndex){
+                          ^~~~~~~~~
+./NodeTree.hpp:48:26: note:   candidate expects 2 arguments, 1 provided
+./NodeTree.hpp:52:26: note: candidate: std::shared_ptr<DataT> NodeTree::getResult(Return)
+   std::shared_ptr<DataT> getResult(Return ret)
+                          ^~~~~~~~~
+./NodeTree.hpp:52:26: note:   no known conversion for argument 1 from 'std::pair<const Param, Return>' to 'Return'
+scons: *** [NodeTree.o] Error 1
+make: *** [Makefile:2: build] Błąd 2

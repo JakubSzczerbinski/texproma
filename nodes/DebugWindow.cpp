@@ -80,3 +80,10 @@ SDL_Rect DebugWindow::getDestinationRect(int x, int y) {
   SDL_Rect dest = {posX, posY, TP_WIDTH, TP_HEIGHT};
   return dest;
 }
+
+DebugWindow::~DebugWindow() {
+  SDL_DestroyTexture(texture_);
+  SDL_DestroyRenderer(renderer_);
+  SDL_DestroyWindow(window_);
+  SDL_Quit();
+}

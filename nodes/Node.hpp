@@ -15,24 +15,14 @@ typedef std::vector<std::shared_ptr<ParamLink> > ParamLinkContainer;
 class Node {
  public:
   Logger log;
-  Node(Function* f, const ParamLinkContainer& pLinks)
-      : function(f), paramLinks(pLinks), log{"Node"} {}
-  std::shared_ptr<DataT> getParam(int param) {
-    updateValues();
-    if (param >= values.size() || param < 0) {
-      log << "Unable to return param. Param of value " + std::to_string(param) +
-                 " out of boundaries ";
-      return nullptr;
-    }
-    return values[param];
-  }
+  Node(Function* f) : log{"Node", f->getName()}, function(f) {}
+  size_t getArity() { return function->getParamTypes().size(); }
+  size_t getReturnArity() { return function->getReturnTypes().size(); }
+  std::string getName() { return function->getName(); }
+  Values operator()(Values params);
 
  private:
-  void updateValues();
-  Values getParamValues();
-  Values values;
   std::unique_ptr<Function> function;
-  ParamLinkContainer paramLinks;
 };
 
 class ParamMatcher {
@@ -45,6 +35,10 @@ class ParamMatcher {
       auto paramIt = params.begin();
       while (paramIt != params.end() && typeIt != types.end()) {
         auto param = (*paramIt);
+        if (param == nullptr) {
+          log << "Unable to match params: one of the params is null";
+          return false;
+        }
         std::type_index paramType = param->typeId();
         std::type_index targetType = (*typeIt);
         if (paramType != targetType) {
@@ -68,30 +62,6 @@ class ParamMatcher {
  private:
   Types types;
   Logger log;
-};
-
-class ParamLink {
- public:
-  virtual std::shared_ptr<DataT> getParam() = 0;
-};
-
-class FunctionParamLink : public ParamLink {
- public:
-  FunctionParamLink(std::shared_ptr<Node> n, int p) : node(n), param(p) {}
-  std::shared_ptr<DataT> getParam() override { return node->getParam(param); }
-
- private:
-  std::shared_ptr<Node> node;
-  int param;
-};
-
-class DataParamLink : public ParamLink {
- public:
-  DataParamLink(std::shared_ptr<DataT> data) : data_(data) {}
-  std::shared_ptr<DataT> getParam() override { return data_; }
-
- private:
-  std::shared_ptr<DataT> data_;
 };
 
 #endif

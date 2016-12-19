@@ -8,6 +8,7 @@ extern "C" {
 class DebugWindow {
  public:
   DebugWindow(unsigned rows, unsigned cols);
+  ~DebugWindow();
   void clear();
   void displayBuf(tpm_mono_buf buffer, unsigned x, unsigned y);
   void displayBuf(tpm_color_buf buffer, unsigned x, unsigned y);
