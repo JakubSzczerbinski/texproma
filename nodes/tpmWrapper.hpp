@@ -132,6 +132,33 @@ struct TpmPerlinNoise : public Function {
     return returns;
   }
 };
+
+struct TpmInvert : public Function {
+  Types getParamTypes() const override { return makeTypeVector<MonoBuf>(); }
+  Types getReturnTypes() const override { return makeTypeVector<MonoBuf>(); }
+  std::string getName() const override { return "tpm_invert"; }
+  Values operator()(Values params) const override {
+    Values returns;
+    MonoBuf buff;
+    tpm_invert(buff.getRawPtr(), extractRawData<MonoBuf>(params[0]).getRawPtr());
+    returns.push_back(makeSharedData(buff));
+    return returns;
+  }
+};
+
+struct TpmAdd : public Function {
+  Types getParamTypes() const override { return makeTypeVector<MonoBuf, MonoBuf>(); }
+  Types getReturnTypes() const override { return makeTypeVector<MonoBuf>(); }
+  std::string getName() const override { return "tpm_add"; }
+  Values operator()(Values params) const override {
+    Values returns;
+    MonoBuf buff;
+    tpm_add(buff.getRawPtr(), extractRawData<MonoBuf>(params[0]).getRawPtr(), extractRawData<MonoBuf>(params[1]).getRawPtr());
+    returns.push_back(makeSharedData(buff));
+    return returns;
+  }
+};
+
 }
 
 #endif

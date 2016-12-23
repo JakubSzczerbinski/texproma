@@ -41,3 +41,23 @@ BOOST_AUTO_TEST_CASE(calculateInvalidTreeResultsWithExcept)
   }
   BOOST_TEST(caughtExcept);
 }
+
+
+BOOST_AUTO_TEST_CASE(calculateBigTreeResults)
+{
+  NodeTree tree;
+  auto sineNode = tree.addNode(new tpmWrapper::TpmSine());
+  auto floatInputNode = tree.addNode(makeInput(10.0f));
+  auto revertNode = tree.addNode(new tpmWrapper::TpmInvert());
+  auto addNode = tree.addNode(new tpmWrapper::TpmAdd());
+
+  tree.linkNodes(sineNode, 0, floatInputNode, 0);
+  tree.linkNodes(revertNode, 0, sineNode, 0);
+  tree.linkNodes(addNode, 0, sineNode, 0);
+  tree.linkNodes(addNode, 1, revertNode, 0);
+
+  auto result = tree.getResult(addNode, 0);
+
+  auto test = result != nullptr;
+  BOOST_TEST(test);
+}
