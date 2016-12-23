@@ -27,7 +27,7 @@ struct Param {
 
 typedef std::map<Param, Return> NodeLinkContainer;
 typedef std::vector<std::shared_ptr<Node>> NodeContainer;
-typedef std::map<Return, std::shared_ptr<DataT>> CachedValuesContainer;
+typedef std::map<std::shared_ptr<Node>, Values> CachedValuesContainer;
 
 class NodeTree {
  public:
@@ -52,6 +52,13 @@ class NodeTree {
 
  private:
   std::shared_ptr<DataT> getResult(Return ret) {
+
+    auto it = cachedValues.find(ret.node);
+    if(it != cachedValues.end())
+    {
+      return it->second[ret.returnIndex];
+    }
+
     Values dataParams;
     unsigned arity = ret.node->getArity();
 
@@ -66,7 +73,8 @@ class NodeTree {
       auto data = getResult(it->second);
       dataParams.push_back(data);
     }
-    auto returns = (*ret.node)(dataParams);
+    Values returns = (*ret.node)(dataParams);
+    cachedValues[ret.node] = returns;
     return returns[ret.returnIndex];
   }
   Logger log{"NodeTree"};

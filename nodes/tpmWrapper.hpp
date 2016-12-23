@@ -58,33 +58,6 @@ class ColorBuf {
   }
 };
 
-/**************
- *** HELPER ***
- **************/
-
-// template <typename Arg, typename... Args>
-// struct TypeVector {
-//   Types getVector() {
-//     Types result = TypeVector<Args...>().getVector();
-//     result.push_front(typeid(Arg));
-//     return result;
-//   }
-// };
-
-// template <typename Arg>
-// struct TypeVector<Arg> {
-//   Types getVector() {
-//     Types result;
-//     result.push_front(typeid(Arg));
-//     return result;
-//   }
-// };
-
-// template <typename... Args>
-// Types makeTypeVector() {
-//   return TypeVector<Args...>().getVector();
-// }
-
 /*****************
  *** FUNCTIONS ***
  *****************/
